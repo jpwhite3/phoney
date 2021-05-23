@@ -9,14 +9,14 @@ ENV PYTHONBUFFERED 1
 # set working directory
 WORKDIR /code
 
-# copy dependencies
-COPY requirements.txt /code/
+# copy project
+COPY . /code/
 
 # install dependencies
 RUN pip install -r requirements.txt
 
-# copy project
-COPY . /code/
-
 # expose port
-EXPOSE 5000
+EXPOSE 8000
+
+# Run server
+ENTRYPOINT make server

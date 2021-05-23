@@ -34,6 +34,9 @@ clean-test: ## remove test and coverage artifacts
 	rm -f .coverage
 	rm -fr .pytest_cache
 
+clean-docker: ## prune unused images
+	docker image prune -af
+
 lint: ## check style with flake8
 	# stop the build if there are Python syntax errors or undefined names
 	flake8 phoney tests --count --select=E9,F63,F7,F82 --show-source --statistics --builtins="_"
@@ -45,6 +48,9 @@ format: ## auto format all the code with black
 
 run:
 	poetry run uvicorn phoney.app.main:app --reload
+
+server:
+	poetry run uvicorn phoney.app.main:app --env-file .env
 
 test: ## run tests quickly with the default Python
 	poetry run pytest
@@ -63,8 +69,11 @@ requirements:
 	poetry update
 	poetry export -f requirements.txt --output requirements.txt
 
-build: clean requirements ## builds source and wheel package
+build: clean test requirements
 	poetry build
+
+build-image: clean-docker test requirements
+	docker build . -t phoney:latest
 
 tag:
 	@export VERSION_TAG=`python3 -c "from phoney import __version__; print(__version__)"` \
