@@ -39,12 +39,12 @@ clean-docker: ## prune unused images
 
 lint: ## check style with flake8
 	# stop the build if there are Python syntax errors or undefined names
-	flake8 phoney tests --count --select=E9,F63,F7,F82 --show-source --statistics --builtins="_"
+	poetry run flake8 phoney tests --count --select=E9,F63,F7,F82 --show-source --statistics --builtins="_"
 	# exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-	flake8 phoney tests --count --ignore=E203,E722,W503,E401,C901 --exit-zero --max-complexity=10 --max-line-length=127 --statistics --builtins="_"
+	poetry run flake8 phoney tests --count --ignore=E203,E722,W503,E401,C901 --exit-zero --max-complexity=10 --max-line-length=127 --statistics --builtins="_"
 
 format: ## auto format all the code with black
-	black ./phoney --line-length 127
+	poetry run black ./phoney --line-length 127
 
 run:
 	poetry run uvicorn phoney.app.main:app --reload
@@ -63,7 +63,7 @@ test-coverage: ## check code coverage quickly with the default Python
 	poetry run coverage report -m
 
 test-coverage-report: test-coverage ## Report coverage to Coveralls
-	coveralls
+	poetry run coveralls
 
 requirements:
 	poetry update
