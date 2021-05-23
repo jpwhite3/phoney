@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  phoney:
+    container_name: "phoney"
+    image: "phoney:latest"
+    env_file:
+      - .env
+    build:
+      context: ./
+      dockerfile: Dockerfile
+      labels:
+        - fastapi-nano
+    volumes:
+        - .:/code
+    ports:
+      - 5000:5000
