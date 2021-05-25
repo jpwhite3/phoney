@@ -15,35 +15,33 @@ export PRINT_HELP_PYSCRIPT
 help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
-clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
+clean: clean-build clean-pyc clean-test
 
-clean-build: ## remove build artifacts
+clean-build:
 	rm -fr build/
 	rm -fr dist/
 	rm -fr .eggs/
 	find . -name '*.egg-info' -exec rm -fr {} +
 	find . -name '*.egg' -exec rm -f {} +
 
-clean-pyc: ## remove Python file artifacts
+clean-pyc:
 	find . -name '*.pyc' -exec rm -f {} +
 	find . -name '*.pyo' -exec rm -f {} +
 	find . -name '*~' -exec rm -f {} +
 	find . -name '__pycache__' -exec rm -fr {} +
 
-clean-test: ## remove test and coverage artifacts
+clean-test:
 	rm -f .coverage
 	rm -fr .pytest_cache
 
-clean-docker: ## prune unused images
+clean-docker:
 	docker image prune -af
 
-lint: ## check style with flake8
-	# stop the build if there are Python syntax errors or undefined names
+lint:
 	poetry run flake8 phoney tests --count --select=E9,F63,F7,F82 --show-source --statistics --builtins="_"
-	# exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
 	poetry run flake8 phoney tests --count --ignore=E203,E722,W503,E401,C901 --exit-zero --max-complexity=10 --max-line-length=127 --statistics --builtins="_"
 
-format: ## auto format all the code with black
+format:
 	poetry run black ./phoney --line-length 127
 
 run:
@@ -52,17 +50,17 @@ run:
 server:
 	poetry run uvicorn phoney.app.main:app --env-file .env
 
-test: ## run tests quickly with the default Python
+test:
 	poetry run pytest
 
-test-debug: ## run tests with debugging enabled
+test-debug:
 	LOGLEVEL=debug; poetry run py.test -s --pdb
 
-test-coverage: ## check code coverage quickly with the default Python
+test-coverage:
 	poetry run coverage run --source phoney -m pytest
 	poetry run coverage report -m
 
-test-coverage-report: test-coverage ## Report coverage to Coveralls
+test-coverage-report: test-coverage
 	poetry run coveralls
 
 requirements:
