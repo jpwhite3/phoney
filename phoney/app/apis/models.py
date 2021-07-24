@@ -8,4 +8,5 @@ class ModelName(str, Enum):
     resnet = "resnet"
     lenet = "lenet"
 
-FakeDataProvider = Enum('FakeDataProvider', {x.lower():x for x in get_provider_list()}, type=str)
+
+FakeDataProvider = Enum("FakeDataProvider", {x.lower(): x for x in get_provider_list()}, type=str)

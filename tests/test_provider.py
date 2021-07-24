@@ -2,8 +2,9 @@ import unittest
 
 import faker
 
+from faker.providers import BaseProvider
 from phoney.app.apis import provider
-from types import ModuleType, FunctionType
+from types import ModuleType
 
 
 class TestGenerator(unittest.TestCase):
@@ -43,11 +44,17 @@ class TestGenerator(unittest.TestCase):
     def test_get_provider(self) -> None:
         self.assertGreater(len(provider.get_provider_list()), 0)
         for provider_name in provider.get_provider_list():
-            module = provider.get_provider(provider_name)
-            self.assertIsInstance(module, ModuleType)
+            prov = provider.get_provider(provider_name)
+            self.assertIsInstance(prov(''), BaseProvider)
 
     def test_get_provider_url_map(self) -> None:
         self.assertGreater(len(provider.get_provider_url_map()), 0)
         for provider_name, url in provider.get_provider_url_map().items():
             expected_url = "/provider/%s" % provider_name
             self.assertEqual(expected_url, url)
+
+    def test_get_generator_list(self) -> None:
+        for provider_name in provider.get_provider_list():
+            prov = provider.get_provider(provider_name)
+            generators = provider.get_generator_list(prov)
+            self.assertGreater(len(generators), 0)
