@@ -4,6 +4,7 @@ from phoney.app.core import auth
 from fastapi.testclient import TestClient
 from phoney.app.main import app
 
+
 class TestCoreAuth(unittest.TestCase):
 
     @classmethod
@@ -12,16 +13,16 @@ class TestCoreAuth(unittest.TestCase):
 
     def setUp(self):
         self.client = TestClient(app)
-    
+
     def test_TokenModel(self) -> None:
         self.assertTrue(issubclass(auth.Token, BaseModel))
-    
+
     def test_TokenDataModel(self) -> None:
         self.assertTrue(issubclass(auth.TokenData, BaseModel))
-    
+
     def test_UserModel(self) -> None:
         self.assertTrue(issubclass(auth.User, BaseModel))
-    
+
     def test_UserInDBModel(self) -> None:
         self.assertTrue(issubclass(auth.UserInDB, BaseModel))
 
@@ -63,7 +64,6 @@ class TestCoreAuth(unittest.TestCase):
         self.assertIn('access_token', response.json())
         self.assertIn('token_type', response.json())
         self.assertEqual(response.json()['token_type'], 'bearer')
-
 
     def test_invalid_post_token(self):
         formdata = {'username': 'bogus', 'password': 'bogus'}

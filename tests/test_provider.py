@@ -4,7 +4,6 @@ import faker
 
 from faker.providers import BaseProvider
 from phoney.app.apis import provider
-from types import ModuleType
 
 
 class TestGenerator(unittest.TestCase):
@@ -15,7 +14,7 @@ class TestGenerator(unittest.TestCase):
 
     def setUp(self):
         pass
-    
+
     def test_is_private_member(self) -> None:
         private_member_names = ['_bad', '__worse', 'BaseProvider', 'OrderedDict']
         for member_name in private_member_names:

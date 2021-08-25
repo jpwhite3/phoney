@@ -5,7 +5,7 @@ from faker.providers import BaseProvider
 # fake = Faker()
 
 PRIVATE_MEMBERS = ["BaseProvider", "OrderedDict"]
-PRIVATE_MEMBER_PREFIXES = ["_", "@"]
+PRIVATE_MEMBER_PREFIXES = ["_", "@", "ALPHA"]
 
 
 def is_private_member(member_name: str) -> bool:
@@ -21,7 +21,7 @@ def is_base_provider_attr(attr_name: str) -> bool:
 
 
 def is_provider(provider_obj) -> bool:
-    return isinstance(provider_obj, ModuleType) and 'Provider' in dir(provider_obj)
+    return isinstance(provider_obj, ModuleType) and "Provider" in dir(provider_obj)
 
 
 def get_provider(provider_name):
@@ -46,6 +46,16 @@ def get_provider_url_map():
 
 
 def get_generator_list(provider_obj):
-    return dir(provider_obj)
+    generator_list = []
+    for attr in dir(provider_obj):
+        if is_generator(getattr(provider_obj, attr)):
+            generator_list.append(attr)
+    return generator_list
 
 
+def is_generator(generator_obj):
+    if hasattr(generator_obj, "__module__"):
+        module_name = str(generator_obj.__module__)
+        if module_name.startswith("faker.providers."):
+            return True
+    return False

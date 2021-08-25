@@ -1,9 +1,10 @@
 import unittest
 from fastapi.testclient import TestClient
 from phoney.app.main import app
-from phoney.app.apis.provider import get_provider_list
+from phoney.app.apis.provider import get_provider_list, get_generator_list, get_provider
 
 client = TestClient(app)
+
 
 class TestApi(unittest.TestCase):
 
@@ -27,6 +28,8 @@ class TestApi(unittest.TestCase):
             response = client.get("/provider/%s" % provider_name)
             self.assertEqual(response.status_code, 200)
 
-            excepted = {"provider_name": provider_name, "message": "Deep Learning FTW!"}
+            provider = get_provider(provider_name)
+            generators = get_generator_list(provider)
+            excepted = {"provider": provider_name, "generators": generators}
             actual = response.json()
             self.assertEqual(excepted, actual)
