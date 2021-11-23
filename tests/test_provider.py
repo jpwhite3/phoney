@@ -46,6 +46,11 @@ class TestGenerator(unittest.TestCase):
             prov = provider.get_provider(provider_name)
             self.assertIsInstance(prov(''), BaseProvider)
 
+    def test_get_provider_unknown(self) -> None:
+        provider_name = 'ArbitraryNonexistantProvider'
+        with self.assertRaises(LookupError):
+            provider.get_provider(provider_name)
+
     def test_get_provider_url_map(self) -> None:
         self.assertGreater(len(provider.get_provider_url_map()), 0)
         for provider_name, url in provider.get_provider_url_map().items():

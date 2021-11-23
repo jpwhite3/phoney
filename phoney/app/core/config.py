@@ -52,4 +52,3 @@ class FactoryConfig:
 
 
 config = FactoryConfig(GlobalConfig().ENV_STATE)()
-# print(config.__repr__())

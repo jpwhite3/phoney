@@ -73,12 +73,11 @@ build: clean test requirements
 build-image: clean-docker test requirements
 	docker build . -t phoney:latest
 
+build-all: build build-image
+
 tag:
 	@export VERSION_TAG=`python3 -c "from phoney import __version__; print(__version__)"` \
-	&& git tag v$$VERSION_TAG
-
-push-tag: tag
-	@export VERSION_TAG=`python3 -c "from phoney import __version__; print(__version__)"` \
+	&& git tag v$$VERSION_TAG \
 	&& git push origin v$$VERSION_TAG
 
 release: test build push-tag

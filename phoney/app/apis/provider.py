@@ -2,7 +2,6 @@ from types import ModuleType
 import faker
 from faker.providers import BaseProvider
 
-# fake = Faker()
 
 PRIVATE_MEMBERS = ["BaseProvider", "OrderedDict"]
 PRIVATE_MEMBER_PREFIXES = ["_", "@", "ALPHA"]
@@ -25,10 +24,12 @@ def is_provider(provider_obj) -> bool:
 
 
 def get_provider(provider_name):
-    provider = getattr(faker.providers, provider_name)
-    if is_provider(provider):
+    try:
+        provider = getattr(faker.providers, provider_name)
+    except AttributeError:
+        raise LookupError("Provider not found")
+    else:
         return provider.Provider
-    raise LookupError("Provider not found")
 
 
 def get_provider_list():
