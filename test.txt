@@ -1,4 +1,6 @@
 Apples
 Pears
-Bananas
 Mango
+Strawbverry
+Kiwi
+Grapes
