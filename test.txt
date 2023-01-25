@@ -2,3 +2,7 @@ Apples
 Pears
 Bananas
 Strawberries
+Pears
+Grapes
+Dragon Fruit
+Mangos
