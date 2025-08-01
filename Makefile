@@ -44,10 +44,7 @@ lint:
 format:
 	poetry run black ./phoney --line-length 127
 
-run:
-	poetry run uvicorn phoney.app.main:app --reload
-
-server:
+serve:
 	poetry run uvicorn phoney.app.main:app --env-file .env
 
 test:
