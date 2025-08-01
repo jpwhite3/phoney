@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Dict, Optional
 
 import jwt
@@ -79,7 +79,8 @@ def authenticate_user(db: Dict, username: str, password: str) -> Optional[UserIn
 def create_access_token(data: Dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
-    expire = datetime.utcnow() + (
+    # Use timezone-aware datetime (UTC) instead of utcnow()
+    expire = datetime.now(tz=timezone.utc) + (
         expires_delta 
         if expires_delta 
         else timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)

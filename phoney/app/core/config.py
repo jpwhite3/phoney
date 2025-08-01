@@ -1,4 +1,7 @@
-from typing import Literal, ClassVar, Optional, List
+import os
+import json
+from functools import lru_cache
+from typing import Literal, ClassVar, Optional, List, Dict, Any
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -11,12 +14,12 @@ class Settings(BaseSettings):
     PORT: int = 8000
     
     # API credentials
-    API_USERNAME: str
-    API_PASSWORD_HASH: str
+    API_USERNAME: str = "default_user"  # Default for testing
+    API_PASSWORD_HASH: str = "$2b$12$tufn64/0gSIHZMPLEHASH"  # Default for testing
     API_KEY: Optional[str] = None  # Optional API key for authentication
     
     # Security
-    SECRET_KEY: str
+    SECRET_KEY: str = "01234567890123456789012345678901"  # Default for testing
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days by default
     ALGORITHM: str = "HS256"
     
@@ -28,7 +31,7 @@ class Settings(BaseSettings):
     SECURITY_HEADERS_ENABLED: bool = True
     
     # CORS settings
-    CORS_ORIGINS: List[str] = ["*"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
     CORS_HEADERS: List[str] = ["*"]
     CORS_METHODS: List[str] = ["*"]
     
@@ -53,16 +56,53 @@ class Settings(BaseSettings):
     
     @field_validator("CORS_ORIGINS")
     @classmethod
-    def validate_cors_origins(cls, v: List[str]) -> List[str]:
+    def validate_cors_origins(cls, v: List[str], info) -> List[str]:
         """Ensure CORS origins are properly formatted."""
         # In production, don't allow overly permissive CORS
-        if "*" in v and cls.ENV_STATE == "prod":
+        # Get current values from model_data in Pydantic v2
+        env_state = info.data.get("ENV_STATE", "dev")
+        if "*" in v and env_state == "prod":
             raise ValueError(
                 "Wildcard CORS origin '*' is not allowed in production. "
                 "Specify exact origins instead."
             )
         return v
+    
+    # Support for deserializing JSON strings from environment variables
+    @field_validator("CORS_ORIGINS", "CORS_HEADERS", "CORS_METHODS", mode="before")
+    @classmethod
+    def parse_json_string(cls, v: Any) -> Any:
+        """Parse JSON string values from environment variables."""
+        if isinstance(v, str) and v.startswith('['):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                pass
+        return v
+        
+    # Fix case sensitivity for LOG_LEVEL
+    @field_validator("LOG_LEVEL", mode="before")
+    @classmethod
+    def uppercase_log_level(cls, v: Any) -> Any:
+        """Convert log level to uppercase for case-insensitive matching."""
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 
-# Create settings instance
-settings = Settings()
+@lru_cache()
+def get_settings() -> Settings:
+    """Get cached settings instance with environment-specific configuration."""
+    # Check if we're in a test environment
+    if os.environ.get("TESTING", "").lower() == "true" or os.environ.get("ENV_STATE", "").lower() == "test":
+        # Use test-specific settings
+        env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "tests", ".env.test")
+        if os.path.exists(env_file):
+            return Settings(_env_file=env_file)
+    
+    # Regular settings
+    return Settings()
+
+
+# Create settings instance - use this throughout the application
+settings = get_settings()

@@ -1,16 +1,23 @@
 """Common test fixtures and utilities for the Phoney test suite."""
 import asyncio
 import os
+import sys
 from typing import Dict, Generator, Any, AsyncGenerator
 
+# Fix for compatibility with Python 3.10+ and different Pydantic versions
 import pytest
-from fastapi.testclient import TestClient
 from pytest_mock import MockFixture
+# Import in specific order to avoid Pydantic initialization errors
+import pydantic
+import fastapi
 
-from phoney.app.main import app
 from phoney.app.core import auth
 from phoney.app.core.config import settings
 from phoney.app.apis.provider import get_provider_list
+
+# Import app and TestClient after other imports to prevent initialization errors
+from fastapi.testclient import TestClient
+from phoney.app.main import app
 
 
 @pytest.fixture
@@ -20,9 +27,12 @@ def client() -> Generator[TestClient, None, None]:
         yield test_client
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_env_vars(monkeypatch) -> None:
-    """Mock environment variables for testing."""
+    """Mock environment variables for testing.
+    
+    This fixture runs automatically for all tests.
+    """
     env_vars = {
         "ENV_STATE": "test",
         "HOST": "localhost",
@@ -33,7 +43,9 @@ def mock_env_vars(monkeypatch) -> None:
         "ACCESS_TOKEN_EXPIRE_MINUTES": "60",
         "ALGORITHM": "HS256",
         "RATE_LIMIT_PER_MINUTE": "100",
-        "SECURITY_HEADERS_ENABLED": "true"
+        "SECURITY_HEADERS_ENABLED": "true",
+        "CORS_ORIGINS": '["http://localhost:3000", "http://localhost:8000"]',
+        "LOG_LEVEL": "INFO"
     }
     
     for key, value in env_vars.items():
