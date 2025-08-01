@@ -60,14 +60,13 @@ test-coverage:
 test-coverage-report: test-coverage
 	poetry run coveralls
 
-requirements:
+update-deps:
 	poetry update
-	poetry export -f requirements.txt --output requirements.txt
 
-build: clean test requirements
+build: clean test
 	poetry build
 
-build-image: clean-docker test requirements
+build-image: clean-docker test
 	docker build . -t phoney:latest
 
 build-all: build build-image
