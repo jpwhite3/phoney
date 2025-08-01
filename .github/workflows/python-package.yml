@@ -2,6 +2,8 @@
 # It will report linting issues without failing the build and enforce test coverage requirements
 
 name: Python CI/CD
+permissions:
+  contents: read
 
 on:
   push:
