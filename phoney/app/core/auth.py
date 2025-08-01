@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Dict, Optional
 
-import jwt
+from jose import jwt
 from fastapi import Depends, APIRouter, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jwt import PyJWTError
+from jose.exceptions import JWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
@@ -103,7 +103,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
         if username is None:
             raise credentials_exception
         token_data = TokenData(username=username)
-    except PyJWTError:
+    except JWTError:
         raise credentials_exception
     user = get_user(users_db, username=token_data.username)
     if user is None:
