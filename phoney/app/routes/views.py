@@ -5,7 +5,6 @@ from typing import Any
 
 from faker import Faker
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from ..apis.models import (

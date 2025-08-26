@@ -381,4 +381,4 @@ def custom_openapi() -> dict[str, Any]:
 
 # Set custom OpenAPI schema function
 app.openapi_schema = None  # Reset schema cache
-setattr(app, "openapi", custom_openapi)
+app.openapi = custom_openapi  # type: ignore[method-assign]
