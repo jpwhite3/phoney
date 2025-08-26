@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -80,7 +80,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     """Create a JWT access token."""
     to_encode = data.copy()
     # Use timezone-aware datetime (UTC) instead of utcnow()
-    expire = datetime.now(tz=UTC) + (
+    expire = datetime.now(tz=timezone.utc) + (
         expires_delta 
         if expires_delta 
         else timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
