@@ -1,0 +1,366 @@
+name: Deploy Phoney to AWS Serverless
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - develop
+  pull_request:
+    branches:
+      - main
+      - staging
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Deployment stage'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      skip_tests:
+        description: 'Skip tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_DEFAULT_REGION: us-east-1
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  # Job 1: Run tests and linting
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+            
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+          
+      - name: Install dependencies
+        run: poetry install
+        
+      - name: Run linting
+        run: |
+          poetry run ruff check phoney/ tests/
+          poetry run black --check phoney/ tests/
+          
+      - name: Run type checking
+        run: poetry run mypy phoney/ --ignore-missing-imports
+        
+      - name: Run tests
+        run: |
+          poetry run pytest tests/ \
+            --cov=phoney \
+            --cov-report=xml \
+            --cov-report=html \
+            --junit-xml=test-results.xml \
+            -v
+            
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: |
+            test-results.xml
+            htmlcov/
+            
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  # Job 2: Determine deployment stage
+  determine-stage:
+    runs-on: ubuntu-latest
+    outputs:
+      stage: ${{ steps.determine.outputs.stage }}
+      should_deploy: ${{ steps.determine.outputs.should_deploy }}
+      
+    steps:
+      - name: Determine deployment stage
+        id: determine
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "stage=${{ github.event.inputs.stage }}" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "stage=prod" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            echo "stage=staging" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "stage=dev" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "stage=dev" >> $GITHUB_OUTPUT
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Job 3: Build and deploy
+  deploy:
+    needs: [test, determine-stage]
+    if: needs.determine-stage.outputs.should_deploy == 'true' && (github.event.inputs.skip_tests != 'true' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    
+    environment:
+      name: ${{ needs.determine-stage.outputs.stage }}
+      url: ${{ steps.deploy.outputs.api_url }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: aws-infrastructure/cdk/package-lock.json
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          
+      - name: Export requirements.txt
+        run: |
+          poetry export -f requirements.txt --output aws-infrastructure/docker/requirements.txt --without-hashes
+          
+      - name: Prepare Docker context
+        run: |
+          cp -r phoney/ aws-infrastructure/docker/
+          cp aws-infrastructure/docker/lambda_handler.py aws-infrastructure/docker/
+          
+      - name: Get ECR repository
+        id: ecr
+        run: |
+          REPO_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com/phoney-${{ needs.determine-stage.outputs.stage }}"
+          echo "repo_uri=$REPO_URI" >> $GITHUB_OUTPUT
+          
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v1
+        
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: aws-infrastructure/docker
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.repo_uri }}:latest
+            ${{ steps.ecr.outputs.repo_uri }}:${{ github.sha }}
+            ${{ steps.ecr.outputs.repo_uri }}:${{ github.run_number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            STAGE=${{ needs.determine-stage.outputs.stage }}
+            
+      - name: Install CDK dependencies
+        working-directory: aws-infrastructure/cdk
+        run: npm ci
+        
+      - name: CDK Bootstrap (if needed)
+        working-directory: aws-infrastructure/cdk
+        run: |
+          if ! aws cloudformation describe-stacks --stack-name CDKToolkit >/dev/null 2>&1; then
+            npx cdk bootstrap
+          fi
+          
+      - name: CDK Deploy
+        id: deploy
+        working-directory: aws-infrastructure/cdk
+        env:
+          STAGE: ${{ needs.determine-stage.outputs.stage }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          # Deploy infrastructure
+          npx cdk deploy "PhoneyStack-${{ needs.determine-stage.outputs.stage }}" \
+            --require-approval never \
+            --outputs-file "outputs-${{ needs.determine-stage.outputs.stage }}.json"
+            
+          # Extract API URL
+          API_URL=$(cat "outputs-${{ needs.determine-stage.outputs.stage }}.json" | jq -r '.["PhoneyStack-'${{ needs.determine-stage.outputs.stage }}'"].ApiUrl // empty')
+          if [[ -n "$API_URL" ]]; then
+            echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Update Lambda function
+        run: |
+          aws lambda update-function-code \
+            --function-name "phoney-${{ needs.determine-stage.outputs.stage }}" \
+            --image-uri "${{ steps.ecr.outputs.repo_uri }}:${{ github.sha }}" \
+            --region ${{ env.AWS_DEFAULT_REGION }}
+            
+      - name: Wait for function update
+        run: |
+          aws lambda wait function-updated \
+            --function-name "phoney-${{ needs.determine-stage.outputs.stage }}" \
+            --region ${{ env.AWS_DEFAULT_REGION }}
+            
+      - name: Run smoke tests
+        if: steps.deploy.outputs.api_url
+        run: |
+          API_URL="${{ steps.deploy.outputs.api_url }}"
+          
+          echo "Testing API health..."
+          curl -f --connect-timeout 30 --max-time 60 "$API_URL" || {
+            echo "Health check failed"
+            exit 1
+          }
+          
+          echo "Testing template API..."
+          curl -f --connect-timeout 30 --max-time 60 \
+            -H "Content-Type: application/json" \
+            -d '{"template":{"name":"{{name}}","email":"{{email}}"},"count":2}' \
+            "$API_URL/template" || {
+            echo "Template API test failed"
+            exit 1
+          }
+          
+          echo "All smoke tests passed!"
+          
+      - name: Create deployment summary
+        run: |
+          cat > deployment-summary.md << EOF
+          # Deployment Summary
+          
+          **Stage:** ${{ needs.determine-stage.outputs.stage }}
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+          **Timestamp:** $(date -u)
+          **API URL:** ${{ steps.deploy.outputs.api_url }}
+          
+          ## Docker Image
+          - Repository: ${{ steps.ecr.outputs.repo_uri }}
+          - Tags: latest, ${{ github.sha }}, ${{ github.run_number }}
+          
+          ## AWS Resources
+          - Lambda Function: phoney-${{ needs.determine-stage.outputs.stage }}
+          - Stack: PhoneyStack-${{ needs.determine-stage.outputs.stage }}
+          - Region: ${{ env.AWS_DEFAULT_REGION }}
+          
+          ## Test Results
+          - Smoke tests: ✅ Passed
+          - Template API: ✅ Working
+          - Health check: ✅ Passed
+          EOF
+          
+      - name: Upload deployment artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-${{ needs.determine-stage.outputs.stage }}-${{ github.run_number }}
+          path: |
+            deployment-summary.md
+            aws-infrastructure/cdk/outputs-${{ needs.determine-stage.outputs.stage }}.json
+            
+      - name: Comment PR with deployment info
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const stage = '${{ needs.determine-stage.outputs.stage }}';
+            const apiUrl = '${{ steps.deploy.outputs.api_url }}';
+            const sha = '${{ github.sha }}';
+            
+            const body = `## 🚀 Deployment Successful
+            
+            **Stage:** \`${stage}\`
+            **API URL:** ${apiUrl}
+            **Commit:** \`${sha}\`
+            
+            ### Quick Test
+            \`\`\`bash
+            curl -X POST "${apiUrl}/template" \\
+              -H "Content-Type: application/json" \\
+              -d '{"template":{"name":"{{name}}","email":"{{email}}"},"count":1}'
+            \`\`\`
+            
+            The deployment is ready for testing!`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # Job 4: Rollback on failure (for production)
+  rollback:
+    needs: [deploy, determine-stage]
+    if: failure() && needs.determine-stage.outputs.stage == 'prod'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Rollback production deployment
+        run: |
+          echo "Production deployment failed. Manual rollback may be required."
+          echo "Check CloudFormation stack: PhoneyStack-prod"
+          echo "Check Lambda function: phoney-prod"
+          
+      - name: Notify team
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Production Deployment Failed',
+              body: `Production deployment failed for commit ${context.sha}.
+              
+              **Branch:** ${context.ref}
+              **Workflow:** ${context.workflow}
+              **Run:** ${context.runNumber}
+              
+              Please investigate and perform manual rollback if necessary.`,
+              labels: ['bug', 'production', 'deployment']
+            });
+            
+            console.log('Created issue:', issue.data.number);

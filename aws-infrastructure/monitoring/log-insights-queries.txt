@@ -1,0 +1,147 @@
+# CloudWatch Logs Insights Queries for Phoney Serverless Application
+
+# Query 1: Overall Performance Analysis
+# Shows request count, average execution time, and error rate over time
+fields @timestamp, @message
+| filter @message like /Lambda invocation/
+| stats count() as requests, avg(execution_time) as avg_time, count(@message[level="ERROR"]) as errors by bin(5m)
+| sort @timestamp desc
+
+# Query 2: Template Processing Performance
+# Analyzes template generation performance and record counts
+fields @timestamp, template_count, execution_time, generated_count
+| filter @message like /template_processed/
+| stats avg(execution_time) as avg_processing_time, 
+        max(execution_time) as max_processing_time,
+        sum(generated_count) as total_records,
+        avg(generated_count) as avg_records_per_request
+        by bin(15m)
+| sort @timestamp desc
+
+# Query 3: Error Analysis
+# Identifies and categorizes errors with context
+fields @timestamp, @requestId, level, error, error_type, @message
+| filter level = "ERROR"
+| stats count() as error_count by error_type
+| sort error_count desc
+
+# Query 4: Cold Start Analysis
+# Tracks Lambda cold starts and their impact
+fields @timestamp, @duration, @billedDuration, @initDuration
+| filter @type = "REPORT"
+| filter ispresent(@initDuration)
+| stats count() as cold_starts,
+        avg(@initDuration) as avg_init_duration,
+        max(@initDuration) as max_init_duration,
+        avg(@duration) as avg_total_duration
+        by bin(1h)
+| sort @timestamp desc
+
+# Query 5: API Endpoint Usage
+# Shows which endpoints are most frequently used
+fields @timestamp, @requestId, http_method, path, status_code
+| filter @message like /Lambda invocation/
+| stats count() as requests by http_method, path
+| sort requests desc
+
+# Query 6: High Memory Usage Requests
+# Identifies requests that consume significant memory
+fields @timestamp, @requestId, @maxMemoryUsed, @memorySize, execution_time, generated_count
+| filter @type = "REPORT"
+| filter @maxMemoryUsed > 500
+| sort @maxMemoryUsed desc
+| limit 20
+
+# Query 7: Timeout Analysis
+# Finds requests approaching or exceeding timeout limits
+fields @timestamp, @requestId, @duration, remaining_time
+| filter @message like /Lambda invocation/
+| filter remaining_time < 5000  # Less than 5 seconds remaining
+| sort remaining_time asc
+| limit 50
+
+# Query 8: Authentication Failures
+# Tracks failed authentication attempts
+fields @timestamp, @requestId, @message
+| filter @message like /authentication failed/ or @message like /Invalid token/
+| stats count() as auth_failures by bin(1h)
+| sort @timestamp desc
+
+# Query 9: Template Validation Errors
+# Analyzes template validation failures and suggests improvements
+fields @timestamp, @requestId, field, generator, message, suggestions
+| filter @message like /validation_error/
+| stats count() as validation_errors by field, generator
+| sort validation_errors desc
+
+# Query 10: Performance Percentiles
+# Shows performance distribution across requests
+fields @timestamp, execution_time
+| filter @message like /template_processed/
+| stats 
+    count() as total_requests,
+    avg(execution_time) as avg_time,
+    pct(execution_time, 50) as p50,
+    pct(execution_time, 90) as p90,
+    pct(execution_time, 95) as p95,
+    pct(execution_time, 99) as p99
+    by bin(30m)
+| sort @timestamp desc
+
+# Query 11: Large Dataset Generation
+# Monitors requests generating large amounts of data
+fields @timestamp, @requestId, generated_count, execution_time, memory_used
+| filter generated_count > 100
+| sort generated_count desc
+| limit 20
+
+# Query 12: Cost Analysis Helper
+# Helps estimate Lambda costs based on usage patterns
+fields @timestamp, @billedDuration, @memorySize
+| filter @type = "REPORT"
+| stats 
+    count() as invocations,
+    sum(@billedDuration) as total_billed_ms,
+    avg(@memorySize) as avg_memory_mb,
+    sum(@billedDuration * @memorySize / 1024) as gb_seconds
+    by bin(1d)
+| sort @timestamp desc
+
+# Query 13: User Activity Patterns
+# Shows usage patterns throughout the day
+fields @timestamp, @requestId, user_id
+| filter @message like /Lambda invocation/
+| stats count() as requests by datefloor(@timestamp, 1h)
+| sort @timestamp desc
+
+# Query 14: Faker Provider Usage
+# Analyzes which Faker generators are most commonly used
+fields @timestamp, generator, locale
+| filter @message like /generator_used/
+| stats count() as usage_count by generator
+| sort usage_count desc
+| limit 20
+
+# Query 15: Response Size Analysis
+# Monitors API response sizes for optimization opportunities
+fields @timestamp, @requestId, response_size_bytes, generated_count
+| filter ispresent(response_size_bytes)
+| stats 
+    avg(response_size_bytes) as avg_response_size,
+    max(response_size_bytes) as max_response_size,
+    avg(response_size_bytes / generated_count) as avg_bytes_per_record
+    by bin(1h)
+| sort @timestamp desc
+
+# Usage Instructions:
+# 1. Go to CloudWatch Logs Insights in AWS Console
+# 2. Select log group: /aws/lambda/phoney-{stage}
+# 3. Copy and paste any of the above queries
+# 4. Adjust time range as needed
+# 5. Run query and analyze results
+
+# Pro Tips:
+# - Use these queries in CloudWatch dashboards for real-time monitoring
+# - Set up CloudWatch alarms based on query results
+# - Export results to CSV for deeper analysis
+# - Combine multiple queries for comprehensive performance reviews
