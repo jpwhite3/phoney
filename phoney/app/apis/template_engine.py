@@ -5,13 +5,14 @@ This module handles parsing and processing of template placeholders,
 generator resolution, and data generation from templates.
 """
 
-import re
 import json
-from typing import Any, Dict, List, Optional, Tuple, Union
+import re
+from typing import Any
+
 from faker import Faker
 
-from .provider import find_generator
 from .models import TemplateField, TemplateValidationError
+from .provider import find_generator
 
 
 class TemplateParser:
@@ -24,7 +25,7 @@ class TemplateParser:
     NESTED_PLACEHOLDER = re.compile(r'\{\{([^}]+\.+[^}]+)\}\}')
     
     @classmethod
-    def parse_parameters(cls, param_string: str) -> Dict[str, Any]:
+    def parse_parameters(cls, param_string: str) -> dict[str, Any]:
         """Parse parameter string like 'min=1,max=100,locale=en_US' into dict."""
         if not param_string:
             return {}
@@ -53,7 +54,7 @@ class TemplateParser:
         return params
     
     @classmethod
-    def extract_placeholders(cls, template: Any, path: str = '') -> List[TemplateField]:
+    def extract_placeholders(cls, template: Any, path: str = '') -> list[TemplateField]:
         """Extract all placeholders from a template structure."""
         fields = []
         
@@ -73,7 +74,7 @@ class TemplateParser:
         return fields
     
     @classmethod
-    def _parse_string_placeholders(cls, text: str, path: str) -> List[TemplateField]:
+    def _parse_string_placeholders(cls, text: str, path: str) -> list[TemplateField]:
         """Parse placeholders from a string value."""
         fields = []
         
@@ -109,7 +110,7 @@ class TemplateParser:
         
         # Check for simple placeholders ({{generator}})
         for match in cls.SIMPLE_PLACEHOLDER.finditer(text):
-            full_match = match.group(0)
+            match.group(0)
             generator = match.group(1).strip()
             
             # Skip if this was already matched by other patterns
@@ -137,10 +138,10 @@ class TemplateParser:
 class TemplateValidator:
     """Validates template structures and placeholders."""
     
-    def __init__(self, faker_instance: Optional[Faker] = None):
+    def __init__(self, faker_instance: Faker | None = None):
         self.faker = faker_instance or Faker()
     
-    def validate_template(self, template: Dict[str, Any], strict: bool = False) -> Tuple[bool, List[TemplateValidationError], List[str]]:
+    def validate_template(self, template: dict[str, Any], strict: bool = False) -> tuple[bool, list[TemplateValidationError], list[str]]:
         """
         Validate a template structure.
         
@@ -185,7 +186,7 @@ class TemplateValidator:
         
         return len(errors) == 0, errors, warnings
     
-    def _validate_field(self, field: TemplateField, strict: bool) -> Tuple[List[TemplateValidationError], List[str]]:
+    def _validate_field(self, field: TemplateField, strict: bool) -> tuple[list[TemplateValidationError], list[str]]:
         """Validate a single template field."""
         errors = []
         warnings = []
@@ -244,7 +245,7 @@ class TemplateValidator:
         
         return errors, warnings
     
-    def _validate_parameters(self, generator_name: str, parameters: Dict[str, Any], field_path: str) -> Tuple[List[TemplateValidationError], List[str]]:
+    def _validate_parameters(self, generator_name: str, parameters: dict[str, Any], field_path: str) -> tuple[list[TemplateValidationError], list[str]]:
         """Validate parameters for a specific generator."""
         errors = []
         warnings = []
@@ -293,14 +294,14 @@ class TemplateValidator:
 class TemplateProcessor:
     """Processes templates and generates data."""
     
-    def __init__(self, locale: Optional[str] = None, seed: Optional[int] = None):
+    def __init__(self, locale: str | None = None, seed: int | None = None):
         self.faker = Faker(locale=locale) if locale else Faker()
         if seed is not None:
             self.faker.seed_instance(seed)
         self.locale = locale or 'en_US'
         self.seed = seed
     
-    def process_template(self, template: Dict[str, Any], count: int = 1, unique: bool = False) -> List[Dict[str, Any]]:
+    def process_template(self, template: dict[str, Any], count: int = 1, unique: bool = False) -> list[dict[str, Any]]:
         """Process a template and generate the requested number of records."""
         if unique:
             # Clear any existing unique constraints
@@ -315,7 +316,7 @@ class TemplateProcessor:
             try:
                 result = self._process_template_item(template)
                 results.append(result)
-            except Exception as e:
+            except Exception:
                 # For failed generation, continue with warning
                 # In production, you might want to log this
                 continue
@@ -393,7 +394,7 @@ class TemplateProcessor:
         
         return result
     
-    def _generate_value(self, generator: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def _generate_value(self, generator: str, params: dict[str, Any] | None = None) -> Any:
         """Generate a single value using the specified generator."""
         # Find the actual generator name
         actual_generator = find_generator(self.faker, generator)
@@ -409,7 +410,7 @@ class TemplateProcessor:
         else:
             return generator_func()
     
-    def _generate_array(self, generator: str, count: int, params: Optional[Dict[str, Any]] = None) -> List[Any]:
+    def _generate_array(self, generator: str, count: int, params: dict[str, Any] | None = None) -> list[Any]:
         """Generate an array of values."""
         return [self._generate_value(generator, params) for _ in range(count)]
 
@@ -420,18 +421,18 @@ class TemplateEngine:
     def __init__(self):
         self.parser = TemplateParser()
     
-    def validate_template(self, template: Dict[str, Any], strict: bool = False) -> Tuple[bool, List[TemplateValidationError], List[str]]:
+    def validate_template(self, template: dict[str, Any], strict: bool = False) -> tuple[bool, list[TemplateValidationError], list[str]]:
         """Validate a template."""
         validator = TemplateValidator()
         return validator.validate_template(template, strict)
     
-    def process_template(self, template: Dict[str, Any], count: int = 1, 
-                        locale: Optional[str] = None, seed: Optional[int] = None,
-                        unique: bool = False) -> List[Dict[str, Any]]:
+    def process_template(self, template: dict[str, Any], count: int = 1, 
+                        locale: str | None = None, seed: int | None = None,
+                        unique: bool = False) -> list[dict[str, Any]]:
         """Process a template and generate data."""
         processor = TemplateProcessor(locale=locale, seed=seed)
         return processor.process_template(template, count, unique)
     
-    def extract_placeholders(self, template: Dict[str, Any]) -> List[TemplateField]:
+    def extract_placeholders(self, template: dict[str, Any]) -> list[TemplateField]:
         """Extract all placeholders from a template."""
         return self.parser.extract_placeholders(template)

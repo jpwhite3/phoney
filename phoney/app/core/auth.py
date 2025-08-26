@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta, timezone
-from typing import Annotated, Dict, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
-from jose import jwt
-from fastapi import Depends, APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import jwt
 from jose.exceptions import JWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -19,13 +19,13 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     """Token payload data schema."""
-    username: Optional[str] = None
+    username: str | None = None
 
 
 class User(BaseModel):
     """Basic user information schema."""
     username: str
-    disabled: Optional[bool] = None
+    disabled: bool | None = None
 
 
 class UserInDB(User):
@@ -58,7 +58,7 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def get_user(db: Dict, username: str) -> Optional[UserInDB]:
+def get_user(db: dict, username: str) -> UserInDB | None:
     """Get a user from the database by username."""
     if username in db:
         user_dict = db[username]
@@ -66,7 +66,7 @@ def get_user(db: Dict, username: str) -> Optional[UserInDB]:
     return None
 
 
-def authenticate_user(db: Dict, username: str, password: str) -> Optional[UserInDB]:
+def authenticate_user(db: dict, username: str, password: str) -> UserInDB | None:
     """Authenticate a user by username and password."""
     user = get_user(db, username)
     if not user:
@@ -76,11 +76,11 @@ def authenticate_user(db: Dict, username: str, password: str) -> Optional[UserIn
     return user
 
 
-def create_access_token(data: Dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
     # Use timezone-aware datetime (UTC) instead of utcnow()
-    expire = datetime.now(tz=timezone.utc) + (
+    expire = datetime.now(tz=UTC) + (
         expires_delta 
         if expires_delta 
         else timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -123,7 +123,7 @@ async def get_current_active_user(
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Endpoint to authenticate and get access token."""
     user = authenticate_user(users_db, form_data.username, form_data.password)
     if not user:

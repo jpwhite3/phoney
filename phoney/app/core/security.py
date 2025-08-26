@@ -1,12 +1,13 @@
 """Security middleware and utilities for the Phoney API."""
 import os
 import time
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from collections.abc import Callable
 
 from fastapi import FastAPI, Request, Response, status
-from starlette.middleware.base import BaseHTTPMiddleware  # Changed from fastapi.middleware.base to starlette.middleware.base
 from fastapi.responses import JSONResponse
-from starlette.datastructures import Headers
+from starlette.middleware.base import (
+    BaseHTTPMiddleware,  # Changed from fastapi.middleware.base to starlette.middleware.base
+)
 
 from .config import settings
 
@@ -18,9 +19,9 @@ class RateLimiter:
         """Initialize with request limit per time window (in seconds)."""
         self.limit = limit
         self.window = window
-        self._requests: Dict[str, List[float]] = {}
+        self._requests: dict[str, list[float]] = {}
     
-    def is_rate_limited(self, key: str) -> Tuple[bool, int, int]:
+    def is_rate_limited(self, key: str) -> tuple[bool, int, int]:
         """Check if a key is rate limited.
         
         Args:
@@ -77,7 +78,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self, 
         app: FastAPI,
         rate_limit_per_minute: int = 60,
-        excluded_paths: Optional[Set[str]] = None,
+        excluded_paths: set[str] | None = None,
     ):
         """Initialize security middleware.
         

@@ -1,19 +1,18 @@
-from fastapi import FastAPI, Request, HTTPException, Depends, status, Query, Path
-from typing import List, Optional
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.openapi.utils import get_openapi
-from fastapi.security import APIKeyHeader
 import secrets
+import time
 
-from .routes import views
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader
+
+from .apis.models import BulkTemplateRequest, BulkTemplateResponse, SimpleFakeResponse
+from .apis.template_engine import TemplateEngine
 from .core import auth
 from .core.config import settings
 from .core.security import setup_security_middleware
-from .apis.models import SimpleFakeResponse, BulkTemplateRequest, BulkTemplateResponse
-from .apis.template_engine import TemplateEngine
-import time
+from .routes import views
 
 # Create FastAPI application with metadata for documentation
 app = FastAPI(
@@ -169,12 +168,12 @@ async def simple_generate_root(
         description="Number of items to generate",
         examples=[1, 5, 10, 50]
     ),
-    locale: Optional[str] = Query(
+    locale: str | None = Query(
         None, 
         description="Language/region for localized data",
         examples=["en_US", "fr_FR", "de_DE", "ja_JP", "es_ES"]
     ),
-    seed: Optional[int] = Query(
+    seed: int | None = Query(
         None, 
         description="Seed for reproducible results (same seed = same data)",
         examples=[42, 123, 456]
@@ -206,7 +205,7 @@ async def simple_generate_root(
     "/generators",
     summary="List all available generators",
     tags=["simple"],
-    response_model=List[str]
+    response_model=list[str]
 )
 async def list_all_generators_root():
     """Get a simple list of all available generator names for easy discovery."""

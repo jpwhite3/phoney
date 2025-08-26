@@ -1,7 +1,8 @@
-import os
 import json
+import os
 from functools import lru_cache
-from typing import Literal, ClassVar, Optional, List, Dict, Any
+from typing import Any, ClassVar, Literal
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,7 +17,7 @@ class Settings(BaseSettings):
     # API credentials
     API_USERNAME: str = "default_user"  # Default for testing
     API_PASSWORD_HASH: str = "$2b$12$tufn64/0gSIHZMPLEHASH"  # Default for testing
-    API_KEY: Optional[str] = None  # Optional API key for authentication
+    API_KEY: str | None = None  # Optional API key for authentication
     
     # Security
     SECRET_KEY: str = "01234567890123456789012345678901"  # Default for testing
@@ -31,9 +32,9 @@ class Settings(BaseSettings):
     SECURITY_HEADERS_ENABLED: bool = True
     
     # CORS settings
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
-    CORS_HEADERS: List[str] = ["*"]
-    CORS_METHODS: List[str] = ["*"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8000"]
+    CORS_HEADERS: list[str] = ["*"]
+    CORS_METHODS: list[str] = ["*"]
     
     # Logging
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
@@ -56,7 +57,7 @@ class Settings(BaseSettings):
     
     @field_validator("CORS_ORIGINS")
     @classmethod
-    def validate_cors_origins(cls, v: List[str], info) -> List[str]:
+    def validate_cors_origins(cls, v: list[str], info) -> list[str]:
         """Ensure CORS origins are properly formatted."""
         # In production, don't allow overly permissive CORS
         # Get current values from model_data in Pydantic v2
@@ -90,7 +91,7 @@ class Settings(BaseSettings):
         return v
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance with environment-specific configuration."""
     # Check if we're in a test environment

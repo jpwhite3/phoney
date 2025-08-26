@@ -1,25 +1,33 @@
-import time
-from typing import Dict, List, Optional, Any, Union
-
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from fastapi.responses import JSONResponse, StreamingResponse
-from faker import Faker
-from pydantic import ValidationError
-import json
 import csv
 import io
+import time
+
+from faker import Faker
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from ..apis.models import (
-    FakeDataProvider, FakerRequest, FakerResponse, 
-    ProviderInfo, ProviderDetail, GeneratorInfo, SimpleFakeResponse,
-    BulkTemplateRequest, BulkTemplateResponse, TemplateValidationRequest, TemplateValidationResponse
+    BulkTemplateRequest,
+    BulkTemplateResponse,
+    FakeDataProvider,
+    FakerRequest,
+    FakerResponse,
+    ProviderDetail,
+    ProviderInfo,
+    SimpleFakeResponse,
+    TemplateValidationRequest,
+    TemplateValidationResponse,
 )
 from ..apis.provider import (
-    get_provider_url_map, get_provider, get_generator_list,
-    get_provider_metadata, get_provider_list, find_generator
+    find_generator,
+    get_generator_list,
+    get_provider,
+    get_provider_list,
+    get_provider_url_map,
 )
 from ..apis.template_engine import TemplateEngine
-from ..core.auth import get_current_active_user, User
+from ..core.auth import User, get_current_active_user
 
 # Create API router with versioning tags and optional authentication
 router = APIRouter(
@@ -31,13 +39,13 @@ router = APIRouter(
 @router.get(
     "/providers", 
     summary="List all available Faker providers",
-    response_model=List[ProviderInfo],
+    response_model=list[ProviderInfo],
     response_model_exclude_none=True
 )
-async def list_providers() -> List[ProviderInfo]:
+async def list_providers() -> list[ProviderInfo]:
     """List all available Faker providers with their metadata."""
     providers = []
-    url_map = get_provider_url_map()
+    get_provider_url_map()
     
     for provider_name in get_provider_list():
         try:
@@ -76,7 +84,7 @@ async def list_generators(
             generators=generators,
             generator_urls=generator_urls
         )
-    except ValueError as e:
+    except ValueError:
         # Handle known provider not found errors
         raise HTTPException(
             status_code=404, 
@@ -98,8 +106,8 @@ async def list_generators(
 async def generate_data(
     provider_name: FakeDataProvider = Path(..., description="Name of the Faker provider"),
     generator_name: str = Path(..., description="Name of the generator method"),
-    locale: Optional[str] = Query(None, description="Optional locale for the Faker instance"),
-    seed: Optional[int] = Query(None, description="Optional seed for reproducible results"),
+    locale: str | None = Query(None, description="Optional locale for the Faker instance"),
+    seed: int | None = Query(None, description="Optional seed for reproducible results"),
     count: int = Query(1, ge=1, le=100, description="Number of items to generate")
 ) -> FakerResponse:
     """Generate fake data using a specific Faker provider and generator."""
@@ -262,7 +270,7 @@ async def advanced_generate(
     except HTTPException:
         # Re-raise HTTP exceptions without modification
         raise
-    except AttributeError as e:
+    except AttributeError:
         # Handle attribute errors for missing generators
         raise HTTPException(
             status_code=404,
@@ -299,8 +307,8 @@ async def advanced_generate(
 async def simple_generate(
     generator: str = Path(..., description="Generator name (e.g., name, email, address)"),
     count: int = Query(1, ge=1, le=100, description="Number of items to generate"),
-    locale: Optional[str] = Query(None, description="Locale for generation (e.g., en_US, fr_FR)"),
-    seed: Optional[int] = Query(None, description="Seed for reproducible results")
+    locale: str | None = Query(None, description="Locale for generation (e.g., en_US, fr_FR)"),
+    seed: int | None = Query(None, description="Seed for reproducible results")
 ) -> SimpleFakeResponse:
     """Generate fake data using a simplified API that automatically finds the right generator.
     
@@ -356,10 +364,10 @@ async def simple_generate(
 @router.get(
     "/generators",
     summary="List all available generators",
-    response_model=List[str],
+    response_model=list[str],
     tags=["simple"]
 )
-async def list_all_generators() -> List[str]:
+async def list_all_generators() -> list[str]:
     """Get a simple list of all available generator names for easy discovery."""
     fake = Faker()
     generators = []
@@ -404,7 +412,7 @@ async def advanced_template_generate(
         is_valid, errors, warnings = template_engine.validate_template(request.template)
         
         if not is_valid:
-            error_messages = [f"{error.field}: {error.message}" for error in errors]
+            [f"{error.field}: {error.message}" for error in errors]
             raise HTTPException(
                 status_code=422,
                 detail={
@@ -447,7 +455,7 @@ async def advanced_template_generate(
             locale=request.locale or "en_US",
             seed=request.seed,
             execution_time_ms=execution_time,
-            warnings=[w for w in warnings] if warnings else []
+            warnings=list(warnings) if warnings else []
         )
         
     except HTTPException:

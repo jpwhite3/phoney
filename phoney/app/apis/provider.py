@@ -1,16 +1,15 @@
-from inspect import isfunction, getmodule
+from inspect import getmodule, isfunction
 from types import ModuleType
-from typing import Any, Dict, List, Set, Type, cast, Optional
+from typing import Any, cast
 
+import faker
 from faker import Faker
 from faker.providers import BaseProvider
-import faker
-
 
 # Constants for filtering Faker providers
-PRIVATE_MEMBERS: Set[str] = {"BaseProvider", "OrderedDict"}
-PRIVATE_MEMBER_PREFIXES: Set[str] = {"_", "@", "ALPHA"}
-BASE_PROVIDER_METHODS: Set[str] = set(dir(BaseProvider))
+PRIVATE_MEMBERS: set[str] = {"BaseProvider", "OrderedDict"}
+PRIVATE_MEMBER_PREFIXES: set[str] = {"_", "@", "ALPHA"}
+BASE_PROVIDER_METHODS: set[str] = set(dir(BaseProvider))
 
 
 def is_private_member(member_name: str) -> bool:
@@ -45,18 +44,18 @@ def is_generator(obj: Any) -> bool:
     return module_name.startswith("faker.providers.")
 
 
-def get_provider(provider_name: str) -> Type[BaseProvider]:
+def get_provider(provider_name: str) -> type[BaseProvider]:
     """Get a provider class by name."""
     try:
         provider_module = getattr(faker.providers, provider_name)
-        return cast(Type[BaseProvider], provider_module.Provider)
+        return cast(type[BaseProvider], provider_module.Provider)
     except (AttributeError, ModuleNotFoundError):
         raise ValueError(f"Provider '{provider_name}' not found")
 
 
-def get_provider_list() -> List[str]:
+def get_provider_list() -> list[str]:
     """Get a list of all available Faker providers."""
-    provider_list: List[str] = []
+    provider_list: list[str] = []
     for provider_name in dir(faker.providers):
         if is_private_member(provider_name):
             continue
@@ -71,14 +70,14 @@ def get_provider_list() -> List[str]:
     return provider_list
 
 
-def get_provider_url_map() -> Dict[str, str]:
+def get_provider_url_map() -> dict[str, str]:
     """Generate a mapping of provider names to their API URLs."""
     return {provider: f"/provider/{provider}" for provider in get_provider_list()}
 
 
-def get_generator_list(provider_class: Type[BaseProvider]) -> List[str]:
+def get_generator_list(provider_class: type[BaseProvider]) -> list[str]:
     """Get a list of all generator methods available in a provider."""
-    generator_list: List[str] = []
+    generator_list: list[str] = []
     
     # Create an instance to inspect its methods
     fake = Faker()
@@ -99,9 +98,9 @@ def get_generator_list(provider_class: Type[BaseProvider]) -> List[str]:
     return generator_list
 
 
-def get_provider_metadata() -> Dict[str, Dict[str, Any]]:
+def get_provider_metadata() -> dict[str, dict[str, Any]]:
     """Get comprehensive metadata about all providers and their generators."""
-    metadata: Dict[str, Dict[str, Any]] = {}
+    metadata: dict[str, dict[str, Any]] = {}
     
     for provider_name in get_provider_list():
         try:
@@ -120,13 +119,12 @@ def get_provider_metadata() -> Dict[str, Dict[str, Any]]:
     return metadata
 
 
-def find_generator(fake_instance: Faker, requested_generator: str) -> Optional[str]:
+def find_generator(fake_instance: Faker, requested_generator: str) -> str | None:
     """Smart generator finder that maps common requests to actual Faker methods.
     
     This function helps beginners by accepting intuitive names and mapping them
     to the actual Faker generator methods.
     """
-    from typing import Optional
     
     # Direct match - if the generator exists as-is, use it
     if hasattr(fake_instance, requested_generator):

@@ -241,7 +241,7 @@ class TestAdvancedTemplateAPI:
         assert data["generated_count"] == 10
         assert data["format"] == "json"
         assert "execution_time_ms" in data
-        assert isinstance(data["execution_time_ms"], (int, float))
+        assert isinstance(data["execution_time_ms"], int | float)
         assert len(data["data"]) == 10
     
     def test_advanced_template_csv_format(self, client: TestClient, auth_headers: dict[str, str]):
@@ -452,7 +452,7 @@ class TestTemplateExamplesAPI:
         assert "localized_template" in examples
         
         # Verify example structure
-        for example_name, example_data in examples.items():
+        for _example_name, example_data in examples.items():
             assert "description" in example_data
             assert "template" in example_data
             assert "count" in example_data

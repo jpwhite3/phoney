@@ -303,7 +303,7 @@ class TestTemplateProcessor:
             assert 18 <= record["age"] <= 80
             # Price should be a decimal/float (including Decimal objects)
             from decimal import Decimal
-            assert isinstance(record["price"], (int, float, str, Decimal))
+            assert isinstance(record["price"], int | float | str | Decimal)
     
     def test_process_array_template(self):
         """Test processing template with arrays."""
@@ -633,7 +633,7 @@ class TestErrorHandling:
         for template in malformed_templates:
             # Should not crash, but may not find placeholders or generate correctly
             try:
-                results = engine.process_template(template, count=1)
+                engine.process_template(template, count=1)
                 # If it doesn't crash, that's acceptable
             except Exception:
                 # Expected for malformed syntax
@@ -653,7 +653,7 @@ class TestErrorHandling:
         
         # Processing should either work (ignoring bad params) or fail gracefully
         try:
-            results = engine.process_template(template, count=1)
+            engine.process_template(template, count=1)
             # If successful, that's fine
         except Exception:
             # If it fails, that's also acceptable
