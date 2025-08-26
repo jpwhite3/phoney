@@ -1,6 +1,7 @@
 import csv
 import io
 import time
+from typing import Any
 
 from faker import Faker
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
@@ -77,7 +78,7 @@ async def list_generators(
 ) -> ProviderDetail:
     """Get details about a specific provider including all available generators."""
     try:
-        provider_class = get_provider(provider_name)
+        provider_class = get_provider(provider_name.value)
         generators = get_generator_list(provider_class)
         generator_urls = {
             gen: f"/api/v1/provider/{provider_name}/{gen}" for gen in generators
@@ -124,7 +125,7 @@ async def generate_data(
         # First, validate provider and generator exist before creating Faker instance
         try:
             # Validate the provider
-            get_provider(provider_name)
+            get_provider(provider_name.value)
         except ValueError:
             # Return consistent 404 for invalid providers
             raise HTTPException(
@@ -201,7 +202,7 @@ async def advanced_generate(
         # First, validate that the provider exists before proceeding
         try:
             # Validate the provider name
-            get_provider(request.provider)
+            get_provider(request.provider.value)
         except ValueError:
             # Return consistent 404 for invalid providers
             raise HTTPException(
@@ -270,7 +271,7 @@ async def advanced_generate(
         )
 
     except ValidationError as e:
-        return JSONResponse(status_code=422, content={"detail": e.errors()})
+        raise HTTPException(status_code=422, detail=e.errors())
     except HTTPException:
         # Re-raise HTTP exceptions without modification
         raise
@@ -449,6 +450,7 @@ async def advanced_template_generate(
         execution_time = (time.time() - start_time) * 1000
 
         # Format output based on requested format
+        data: list[dict[str, Any]] | str
         if request.format == "csv" and results:
             # Convert to CSV format
             output = io.StringIO()
@@ -533,7 +535,7 @@ async def validate_template(
     summary="Get template examples and documentation",
     tags=["templates"],
 )
-async def get_template_examples():
+async def get_template_examples() -> dict[str, Any]:
     """Get template examples and documentation for different use cases."""
     examples = {
         "basic_user_template": {

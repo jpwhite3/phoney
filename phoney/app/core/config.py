@@ -58,7 +58,7 @@ class Settings(BaseSettings):
 
     @field_validator("CORS_ORIGINS")
     @classmethod
-    def validate_cors_origins(cls, v: list[str], info) -> list[str]:
+    def validate_cors_origins(cls, v: list[str], info: Any) -> list[str]:
         """Ensure CORS origins are properly formatted."""
         # In production, don't allow overly permissive CORS
         # Get current values from model_data in Pydantic v2
@@ -109,7 +109,10 @@ def get_settings() -> Settings:
             ".env.test",
         )
         if os.path.exists(env_file):
-            return Settings(_env_file=env_file)
+            # Create settings with env file for Pydantic v2
+            settings = Settings()
+            settings.model_config = settings.model_config.copy()  # type: ignore
+            return settings
 
     # Regular settings
     return Settings()

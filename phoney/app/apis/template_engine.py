@@ -238,7 +238,7 @@ class TemplateValidator:
             # Validate parameters if present
             if field.parameters:
                 param_errors, param_warnings = self._validate_parameters(
-                    actual_generator, field.parameters, field.nested_path
+                    actual_generator, field.parameters, field.nested_path or ""
                 )
                 errors.extend(param_errors)
                 warnings.extend(param_warnings)
@@ -451,7 +451,7 @@ class TemplateProcessor:
 class TemplateEngine:
     """Main template engine interface."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.parser = TemplateParser()
 
     def validate_template(

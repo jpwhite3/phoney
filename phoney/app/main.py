@@ -1,5 +1,6 @@
 import secrets
 import time
+from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -92,7 +93,7 @@ setup_security_middleware(app)
 
 # Exception handler for clean error responses
 @app.exception_handler(Exception)
-async def generic_exception_handler(request: Request, exc: Exception):
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # Don't expose details in production
     if settings.ENV_STATE == "prod":
         return JSONResponse(
@@ -108,7 +109,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 
 # API key verification dependency
-async def verify_api_key(api_key: str = Depends(API_KEY_HEADER)):
+async def verify_api_key(api_key: str = Depends(API_KEY_HEADER)) -> bool | None:
     """Verify the API key if provided."""
     if api_key and api_key == API_KEY:
         return True
@@ -117,7 +118,7 @@ async def verify_api_key(api_key: str = Depends(API_KEY_HEADER)):
 
 # Root endpoint for API information
 @app.get("/", tags=["status"])
-async def root():
+async def root() -> dict[str, Any]:
     """Get API information and status."""
     return {
         "name": "Phoney - Faker API",
@@ -142,7 +143,7 @@ async def root():
 
 # Health check endpoint for monitoring
 @app.get("/health", tags=["status"])
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Health check endpoint for monitoring."""
     return {"status": "healthy"}
 
@@ -158,13 +159,7 @@ async def simple_generate_root(
     generator: str = Path(
         ...,
         description="What kind of data you want",
-        examples={
-            "name": {"summary": "Person name", "value": "name"},
-            "email": {"summary": "Email address", "value": "email"},
-            "phone": {"summary": "Phone number", "value": "phone"},
-            "address": {"summary": "Street address", "value": "address"},
-            "company": {"summary": "Company name", "value": "company"},
-        },
+        example="name",
     ),
     count: int = Query(
         1,
@@ -183,7 +178,7 @@ async def simple_generate_root(
         description="Seed for reproducible results (same seed = same data)",
         examples=[42, 123, 456],
     ),
-):
+) -> SimpleFakeResponse:
     """🎯 **Generate fake data instantly!**
 
     Just specify what you want and get realistic fake data for testing.
@@ -213,7 +208,7 @@ async def simple_generate_root(
     tags=["simple"],
     response_model=list[str],
 )
-async def list_all_generators_root():
+async def list_all_generators_root() -> list[str]:
     """Get a simple list of all available generator names for easy discovery."""
     from .routes.views import list_all_generators
 
@@ -323,7 +318,7 @@ async def simple_template_generate(
     summary="Template examples and help",
     tags=["simple", "templates"],
 )
-async def simple_template_examples():
+async def simple_template_examples() -> dict[str, Any]:
     """Get template examples for the simple template API."""
     return {
         "basic_example": {
@@ -357,7 +352,7 @@ app.include_router(views.router)
 
 
 # Custom OpenAPI schema with additional metadata
-def custom_openapi():
+def custom_openapi() -> dict[str, Any]:
     if app.openapi_schema:
         return app.openapi_schema
 
@@ -384,4 +379,6 @@ def custom_openapi():
     return app.openapi_schema
 
 
-app.openapi = custom_openapi
+# Set custom OpenAPI schema function
+app.openapi_schema = None  # Reset schema cache
+setattr(app, "openapi", custom_openapi)

@@ -6,9 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .provider import get_provider_list
 
 # Create enum for available Faker providers
-FakeDataProvider = Enum(
-    "FakeDataProvider", {x.lower(): x for x in get_provider_list()}, type=str
-)
+_provider_mapping = {x.lower(): x for x in get_provider_list()}
+FakeDataProvider = Enum("FakeDataProvider", _provider_mapping, type=str)  # type: ignore[misc]
 
 
 class GeneratorParams(BaseModel):
