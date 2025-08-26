@@ -599,9 +599,7 @@ class TestErrorHandling:
 
     def test_invalid_parameter_values(self):
         """Test handling of invalid parameter values."""
-        template = {
-            "age": "{{random_int:min=abc,max=xyz}}"  # Non-numeric parameters
-        }
+        template = {"age": "{{random_int:min=abc,max=xyz}}"}  # Non-numeric parameters
 
         engine = TemplateEngine()
 

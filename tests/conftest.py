@@ -1,14 +1,15 @@
 """Common test fixtures and utilities for the Phoney test suite."""
+
 import asyncio
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
+# Import app and TestClient after other imports to prevent initialization errors
+from fastapi.testclient import TestClient
+
 # Import in specific order to avoid Pydantic initialization errors
 # Fix for compatibility with Python 3.10+ and different Pydantic versions
 import pytest
-
-# Import app and TestClient after other imports to prevent initialization errors
-from fastapi.testclient import TestClient
 from pytest_mock import MockFixture
 
 from phoney.app.apis.provider import get_provider_list

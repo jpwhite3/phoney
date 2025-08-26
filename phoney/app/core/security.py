@@ -1,7 +1,8 @@
 """Security middleware and utilities for the Phoney API."""
+
+from collections.abc import Callable
 import os
 import time
-from collections.abc import Callable
 
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -207,7 +208,9 @@ def setup_security_middleware(app: FastAPI) -> None:
     # Add the security middleware
     app.add_middleware(
         SecurityMiddleware,
-        rate_limit_per_minute=settings.RATE_LIMIT_PER_MINUTE
-        if hasattr(settings, "RATE_LIMIT_PER_MINUTE")
-        else 60,
+        rate_limit_per_minute=(
+            settings.RATE_LIMIT_PER_MINUTE
+            if hasattr(settings, "RATE_LIMIT_PER_MINUTE")
+            else 60
+        ),
     )

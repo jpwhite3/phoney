@@ -12,8 +12,8 @@ Tests cover:
 
 import time
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 
 class TestSimpleTemplateAPI:
@@ -518,10 +518,7 @@ class TestTemplatePerformance:
     def test_validation_performance(self, client: TestClient):
         """Test performance of template validation."""
         validation_request = {
-            "template": {
-                f"field_{i}": "{{name}}"
-                for i in range(20)  # 20 fields
-            }
+            "template": {f"field_{i}": "{{name}}" for i in range(20)}  # 20 fields
         }
 
         start_time = time.time()

@@ -1,10 +1,11 @@
 """Test suite for security middleware and utilities."""
+
 import time
 from unittest.mock import Mock
 
-import pytest
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+import pytest
 from starlette.datastructures import Headers
 
 from phoney.app.core.security import (

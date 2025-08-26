@@ -8,8 +8,8 @@ These tests validate the most important template features work correctly:
 - Core error handling
 """
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 from phoney.app.apis.template_engine import TemplateEngine
 from phoney.app.main import app

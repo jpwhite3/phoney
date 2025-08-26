@@ -1,7 +1,7 @@
 """Test suite for configuration settings."""
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from phoney.app.core.config import Settings
 

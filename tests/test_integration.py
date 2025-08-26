@@ -1,10 +1,11 @@
 """Integration tests for the Phoney API application."""
+
 from collections.abc import Generator
 from typing import Any
 from unittest.mock import patch
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 from phoney.app.core import auth
 from phoney.app.main import app
