@@ -9,16 +9,16 @@ Tests cover:
 - Performance benchmarks
 """
 
-import pytest
 import time
-from typing import Dict, List, Any
-from unittest.mock import Mock, patch
+
+import pytest
 
 from phoney.app.apis.template_engine import (
-    TemplateParser, TemplateValidator, TemplateProcessor, TemplateEngine
+    TemplateEngine,
+    TemplateParser,
+    TemplateProcessor,
+    TemplateValidator,
 )
-from phoney.app.apis.models import TemplateField, TemplateValidationError
-from faker import Faker
 
 
 class TestTemplateParser:

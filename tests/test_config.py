@@ -1,5 +1,4 @@
 """Test suite for configuration settings."""
-from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError

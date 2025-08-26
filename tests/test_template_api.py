@@ -10,13 +10,10 @@ Tests cover:
 - Performance with realistic workloads
 """
 
-import pytest
-import json
 import time
-from typing import Dict
-from fastapi.testclient import TestClient
 
-from phoney.app.main import app
+import pytest
+from fastapi.testclient import TestClient
 
 
 class TestSimpleTemplateAPI:
@@ -224,7 +221,7 @@ class TestSimpleTemplateAPI:
 class TestAdvancedTemplateAPI:
     """Test the advanced template API endpoint (/api/v1/template/generate)."""
     
-    def test_advanced_template_generation(self, client: TestClient, auth_headers: Dict[str, str]):
+    def test_advanced_template_generation(self, client: TestClient, auth_headers: dict[str, str]):
         """Test advanced template generation with authentication."""
         template_request = {
             "template": {
@@ -247,7 +244,7 @@ class TestAdvancedTemplateAPI:
         assert isinstance(data["execution_time_ms"], (int, float))
         assert len(data["data"]) == 10
     
-    def test_advanced_template_csv_format(self, client: TestClient, auth_headers: Dict[str, str]):
+    def test_advanced_template_csv_format(self, client: TestClient, auth_headers: dict[str, str]):
         """Test CSV format output."""
         template_request = {
             "template": {
@@ -272,7 +269,7 @@ class TestAdvancedTemplateAPI:
         assert len(csv_lines) > 5  # Header + 5 data rows
         assert "name,email,age" in csv_lines[0] or "name" in csv_lines[0]  # Header row
     
-    def test_advanced_template_large_dataset(self, client: TestClient, auth_headers: Dict[str, str]):
+    def test_advanced_template_large_dataset(self, client: TestClient, auth_headers: dict[str, str]):
         """Test generation of larger datasets (advanced endpoint only)."""
         template_request = {
             "template": {
@@ -291,7 +288,7 @@ class TestAdvancedTemplateAPI:
         assert data["generated_count"] == 2000
         assert len(data["data"]) == 2000
     
-    def test_advanced_template_unique_values(self, client: TestClient, auth_headers: Dict[str, str]):
+    def test_advanced_template_unique_values(self, client: TestClient, auth_headers: dict[str, str]):
         """Test unique value generation."""
         template_request = {
             "template": {
@@ -536,7 +533,7 @@ class TestTemplatePerformance:
         """Test performance of template validation."""
         validation_request = {
             "template": {
-                f"field_{i}": f"{{{{name}}}}" for i in range(20)  # 20 fields
+                f"field_{i}": "{{name}}" for i in range(20)  # 20 fields
             }
         }
         
@@ -604,8 +601,8 @@ class TestTemplateErrorHandling:
     
     def test_concurrent_requests(self, client: TestClient):
         """Test handling of concurrent template requests."""
-        import threading
         import queue
+        import threading
         
         template_request = {
             "template": {
@@ -663,7 +660,7 @@ class TestTemplateIntegration:
         assert data["generated_count"] == basic_template["count"]
         assert len(data["data"]) == basic_template["count"]
     
-    def test_full_workflow_advanced_api(self, client: TestClient, auth_headers: Dict[str, str]):
+    def test_full_workflow_advanced_api(self, client: TestClient, auth_headers: dict[str, str]):
         """Test complete workflow using advanced API."""
         # 1. Get advanced examples
         examples_response = client.get("/api/v1/template/examples")

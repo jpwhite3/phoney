@@ -1,17 +1,13 @@
 """Integration tests for the Phoney API application."""
-import os
-import pytest
-import asyncio
-from typing import Dict, Generator, Any
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
-from faker import Faker
 
-from phoney.app.main import app
 from phoney.app.core import auth
-from phoney.app.core.config import settings
-from phoney.app.apis import provider
+from phoney.app.main import app
 
 
 @pytest.fixture
@@ -22,7 +18,7 @@ def client() -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture
-def mock_user_db() -> Dict[str, Dict[str, Any]]:
+def mock_user_db() -> dict[str, dict[str, Any]]:
     """Create a test user database for authentication."""
     password = "test_password"
     password_hash = auth.get_password_hash(password)
@@ -36,7 +32,7 @@ def mock_user_db() -> Dict[str, Dict[str, Any]]:
 
 
 @pytest.fixture
-def auth_token(client: TestClient, mock_user_db: Dict) -> str:
+def auth_token(client: TestClient, mock_user_db: dict) -> str:
     """Get an authentication token for testing protected routes."""
     with patch.object(auth, "users_db", mock_user_db):
         with patch.object(auth, "authenticate_user", return_value=auth.UserInDB(**mock_user_db["api_user"])):

@@ -1,22 +1,19 @@
 """Common test fixtures and utilities for the Phoney test suite."""
 import asyncio
-import os
-import sys
-from typing import Dict, Generator, Any, AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
 
+# Import in specific order to avoid Pydantic initialization errors
 # Fix for compatibility with Python 3.10+ and different Pydantic versions
 import pytest
-from pytest_mock import MockFixture
-# Import in specific order to avoid Pydantic initialization errors
-import pydantic
-import fastapi
-
-from phoney.app.core import auth
-from phoney.app.core.config import settings
-from phoney.app.apis.provider import get_provider_list
 
 # Import app and TestClient after other imports to prevent initialization errors
 from fastapi.testclient import TestClient
+from pytest_mock import MockFixture
+
+from phoney.app.apis.provider import get_provider_list
+from phoney.app.core import auth
+from phoney.app.core.config import settings
 from phoney.app.main import app
 
 
@@ -53,7 +50,7 @@ def mock_env_vars(monkeypatch) -> None:
 
 
 @pytest.fixture
-def mock_user_db() -> Dict[str, Dict[str, Any]]:
+def mock_user_db() -> dict[str, dict[str, Any]]:
     """Create a test user database for authentication."""
     password = "test_password"
     password_hash = auth.get_password_hash(password)
@@ -67,7 +64,7 @@ def mock_user_db() -> Dict[str, Dict[str, Any]]:
 
 
 @pytest.fixture
-def auth_headers(client: TestClient, mocker: MockFixture, mock_user_db: Dict) -> Dict[str, str]:
+def auth_headers(client: TestClient, mocker: MockFixture, mock_user_db: dict) -> dict[str, str]:
     """Get authentication headers for testing protected routes."""
     mocker.patch.object(auth, "users_db", mock_user_db)
     mocker.patch.object(auth, "authenticate_user", return_value=auth.UserInDB(**mock_user_db["api_user"]))
@@ -90,7 +87,7 @@ def auth_headers(client: TestClient, mocker: MockFixture, mock_user_db: Dict) ->
 
 
 @pytest.fixture
-def api_key_headers() -> Dict[str, str]:
+def api_key_headers() -> dict[str, str]:
     """Get API key headers for testing."""
     return {"X-API-Key": "test_api_key"}
 

@@ -1,14 +1,14 @@
 import unittest
-import asyncio
 from unittest.mock import patch
 
-from pydantic import BaseModel
 from fastapi.testclient import TestClient
+from pydantic import BaseModel
+
 jwt_mock = unittest.mock.MagicMock()
 
 from phoney.app.core import auth
-from phoney.app.main import app
 from phoney.app.core.config import settings
+from phoney.app.main import app
 
 
 class TestCoreAuth(unittest.TestCase):

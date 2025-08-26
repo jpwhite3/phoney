@@ -1,5 +1,4 @@
 import unittest
-from typing import List, Dict, Any, Set
 
 import faker
 from faker import Faker

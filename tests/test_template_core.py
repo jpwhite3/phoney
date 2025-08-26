@@ -11,8 +11,8 @@ These tests validate the most important template features work correctly:
 import pytest
 from fastapi.testclient import TestClient
 
-from phoney.app.main import app
 from phoney.app.apis.template_engine import TemplateEngine
+from phoney.app.main import app
 
 
 class TestTemplateCoreEngine:

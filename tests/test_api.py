@@ -1,12 +1,11 @@
 import unittest
-from typing import List, Dict, Any
 
 from fastapi.testclient import TestClient
 from pydantic import TypeAdapter
 
+from phoney.app.apis.models import ProviderDetail, ProviderInfo
+from phoney.app.apis.provider import get_generator_list, get_provider, get_provider_list
 from phoney.app.main import app
-from phoney.app.apis.provider import get_provider_list, get_generator_list, get_provider
-from phoney.app.apis.models import ProviderInfo, ProviderDetail
 
 client = TestClient(app)
 
@@ -29,7 +28,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         
         # Validate response against the model
-        providers_adapter = TypeAdapter(List[ProviderInfo])
+        providers_adapter = TypeAdapter(list[ProviderInfo])
         providers = providers_adapter.validate_python(response.json())
         
         # Check all expected providers are present
