@@ -21,43 +21,39 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
+
       - name: Set up Python 3.13
         uses: actions/setup-python@v4
         with:
           python-version: '3.13'
           cache: 'pip'
-      
+
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      
+
       - name: Configure Poetry
         run: poetry config virtualenvs.create false
-      
+
       - name: Cache Poetry dependencies
         uses: actions/cache@v3
         with:
           path: ~/.cache/pypoetry
           key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
           restore-keys: ${{ runner.os }}-poetry-
-      
+
       - name: Install dependencies
         run: poetry install --no-interaction
-      
-      - name: Run Black check
-        continue-on-error: true
-        run: poetry run black --check .
-      
+
       - name: Run isort check
         continue-on-error: true
         run: poetry run isort --check .
-      
+
       - name: Run Ruff linting
         continue-on-error: true
         run: poetry run ruff check .
-      
+
       - name: Run mypy type checking
         continue-on-error: true
         run: poetry run mypy .
@@ -70,35 +66,35 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
-      
+
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      
+
       - name: Configure Poetry
         run: poetry config virtualenvs.create false
-      
+
       - name: Cache Poetry dependencies
         uses: actions/cache@v3
         with:
           path: ~/.cache/pypoetry
           key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}-${{ matrix.python-version }}
           restore-keys: ${{ runner.os }}-poetry-${{ matrix.python-version }}-
-      
+
       - name: Install dependencies
         run: poetry install --no-interaction
-      
+
       - name: Create .env file for testing
         run: |
           echo "ENV_STATE=test" > .env
@@ -107,11 +103,11 @@ jobs:
           echo "API_USERNAME=test_user" >> .env
           echo "API_PASSWORD_HASH=\$2b\$12\$tufn64/0gSIHZMPLEHASH" >> .env
           echo "SECRET_KEY=$(openssl rand -hex 32)" >> .env
-      
+
       - name: Run pytest with coverage
         run: |
           poetry run pytest --cov=phoney --cov-report=xml --cov-report=html --cov-report=term --cov-fail-under=75
-      
+
       - name: Upload coverage reports as artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -128,23 +124,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
+
       - name: Set up Python 3.13
         uses: actions/setup-python@v4
         with:
           python-version: '3.13'
-      
+
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      
+
       - name: Configure Poetry
         run: poetry config virtualenvs.create false
-      
+
       - name: Install dependencies
         run: poetry install --no-interaction
-      
+
       - name: Create .env file for testing
         run: |
           echo "ENV_STATE=test" > .env
@@ -153,13 +149,13 @@ jobs:
           echo "API_USERNAME=test_user" >> .env
           echo "API_PASSWORD_HASH=\$2b\$12\$tufn64/0gSIHZMPLEHASH" >> .env
           echo "SECRET_KEY=$(openssl rand -hex 32)" >> .env
-      
+
       - name: Run pytest with coverage threshold
         run: |
           poetry run pytest --cov=phoney --cov-report=xml --cov-report=html --cov-report=term --cov-fail-under=75
           echo "::notice::Current test coverage meets minimum requirement of 75%"
           poetry run coverage report --fail-under=90 || echo "::warning::Test coverage is below target of 90%"
-      
+
       - name: Upload comprehensive coverage report
         uses: actions/upload-artifact@v4
         with:

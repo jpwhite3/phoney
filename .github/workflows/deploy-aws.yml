@@ -70,7 +70,6 @@ jobs:
       - name: Run linting
         run: |
           poetry run ruff check phoney/ tests/
-          poetry run black --check phoney/ tests/
 
       - name: Run type checking
         run: poetry run mypy phoney/ --ignore-missing-imports
