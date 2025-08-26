@@ -1,18 +1,24 @@
+import time
 from typing import Dict, List, Optional, Any, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from faker import Faker
 from pydantic import ValidationError
+import json
+import csv
+import io
 
 from ..apis.models import (
     FakeDataProvider, FakerRequest, FakerResponse, 
-    ProviderInfo, ProviderDetail, GeneratorInfo
+    ProviderInfo, ProviderDetail, GeneratorInfo, SimpleFakeResponse,
+    BulkTemplateRequest, BulkTemplateResponse, TemplateValidationRequest, TemplateValidationResponse
 )
 from ..apis.provider import (
     get_provider_url_map, get_provider, get_generator_list,
-    get_provider_metadata, get_provider_list
+    get_provider_metadata, get_provider_list, find_generator
 )
+from ..apis.template_engine import TemplateEngine
 from ..core.auth import get_current_active_user, User
 
 # Create API router with versioning tags and optional authentication
@@ -282,3 +288,313 @@ async def advanced_generate(
                 status_code=500,
                 detail=f"Error generating data: {str(e)}"
             )
+
+
+@router.get(
+    "/fake/{generator}",
+    summary="Generate fake data (simplified API)",
+    response_model=SimpleFakeResponse,
+    tags=["simple"]
+)
+async def simple_generate(
+    generator: str = Path(..., description="Generator name (e.g., name, email, address)"),
+    count: int = Query(1, ge=1, le=100, description="Number of items to generate"),
+    locale: Optional[str] = Query(None, description="Locale for generation (e.g., en_US, fr_FR)"),
+    seed: Optional[int] = Query(None, description="Seed for reproducible results")
+) -> SimpleFakeResponse:
+    """Generate fake data using a simplified API that automatically finds the right generator.
+    
+    Just specify what kind of data you want (like 'name', 'email', 'address') and get results!
+    No need to worry about providers or complex parameters.
+    """
+    try:
+        # Create Faker instance
+        fake = Faker(locale=locale) if locale else Faker()
+        
+        # Set seed if provided
+        if seed is not None:
+            fake.seed_instance(seed)
+        
+        # Find the generator using smart mapping
+        actual_generator = find_generator(fake, generator)
+        if not actual_generator:
+            # Suggest similar generators if available
+            available = [attr for attr in dir(fake) if not attr.startswith('_') and callable(getattr(fake, attr))]
+            suggestions = [g for g in available if generator.lower() in g.lower() or g.lower() in generator.lower()][:5]
+            
+            detail = f"Generator '{generator}' not found."
+            if suggestions:
+                detail += f" Did you mean: {', '.join(suggestions)}?"
+            
+            raise HTTPException(status_code=404, detail=detail)
+        
+        generator_func = getattr(fake, actual_generator)
+        
+        # Generate data
+        if count == 1:
+            data = generator_func()
+        else:
+            data = [generator_func() for _ in range(count)]
+        
+        return SimpleFakeResponse(
+            generator=actual_generator,
+            data=data,
+            count=count,
+            locale=locale or "en_US",
+            seed=seed
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating data: {str(e)}"
+        )
+
+
+@router.get(
+    "/generators",
+    summary="List all available generators",
+    response_model=List[str],
+    tags=["simple"]
+)
+async def list_all_generators() -> List[str]:
+    """Get a simple list of all available generator names for easy discovery."""
+    fake = Faker()
+    generators = []
+    for attr in dir(fake):
+        if not attr.startswith('_'):
+            try:
+                attr_obj = getattr(fake, attr)
+                if callable(attr_obj):
+                    generators.append(attr)
+            except (AttributeError, TypeError):
+                # Skip attributes that can't be accessed or are deprecated
+                continue
+    return sorted(generators)
+
+
+# Template System Endpoints
+
+@router.post(
+    "/template/generate",
+    summary="Advanced bulk template generation with authentication",
+    response_model=BulkTemplateResponse,
+    tags=["templates"]
+)
+async def advanced_template_generate(
+    request: BulkTemplateRequest,
+    current_user: User = Depends(get_current_active_user)
+) -> BulkTemplateResponse:
+    """Generate bulk data using templates with advanced features (requires authentication).
+    
+    This endpoint supports:
+    - Large datasets (up to 10,000 records)
+    - Multiple output formats (JSON, CSV)
+    - Streaming for large datasets
+    - Unique value generation
+    - Complex nested templates
+    """
+    start_time = time.time()
+    template_engine = TemplateEngine()
+    
+    try:
+        # Validate template first
+        is_valid, errors, warnings = template_engine.validate_template(request.template)
+        
+        if not is_valid:
+            error_messages = [f"{error.field}: {error.message}" for error in errors]
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "message": "Template validation failed",
+                    "errors": [error.dict() for error in errors]
+                }
+            )
+        
+        # Process template
+        results = template_engine.process_template(
+            template=request.template,
+            count=request.count,
+            locale=request.locale,
+            seed=request.seed,
+            unique=request.unique
+        )
+        
+        execution_time = (time.time() - start_time) * 1000
+        
+        # Format output based on requested format
+        if request.format == "csv" and results:
+            # Convert to CSV format
+            output = io.StringIO()
+            if results:
+                fieldnames = results[0].keys()
+                writer = csv.DictWriter(output, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(results)
+                data = output.getvalue()
+            else:
+                data = ""
+        else:
+            data = results
+        
+        return BulkTemplateResponse(
+            generated_count=len(results),
+            requested_count=request.count,
+            data=data,
+            format=request.format,
+            locale=request.locale or "en_US",
+            seed=request.seed,
+            execution_time_ms=execution_time,
+            warnings=[w for w in warnings] if warnings else []
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Template processing error: {str(e)}"
+        )
+
+
+@router.post(
+    "/template/validate",
+    summary="Validate template syntax and generators",
+    response_model=TemplateValidationResponse,
+    tags=["templates"]
+)
+async def validate_template(request: TemplateValidationRequest) -> TemplateValidationResponse:
+    """Validate a template without generating data.
+    
+    This endpoint helps you:
+    - Check template syntax
+    - Verify generator names
+    - Get suggestions for invalid generators
+    - Estimate output structure
+    """
+    try:
+        template_engine = TemplateEngine()
+        
+        # Validate the template
+        is_valid, errors, warnings = template_engine.validate_template(
+            request.template, 
+            strict=request.strict
+        )
+        
+        # Extract detected fields
+        detected_fields = template_engine.extract_placeholders(request.template)
+        
+        # Estimate output size (rough calculation)
+        estimated_size = None
+        if detected_fields:
+            # Rough estimate based on typical field sizes
+            estimated_size = sum(50 for _ in detected_fields)  # ~50 chars per field
+        
+        return TemplateValidationResponse(
+            valid=is_valid,
+            errors=errors,
+            warnings=warnings,
+            detected_fields=detected_fields,
+            estimated_size=estimated_size
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Validation error: {str(e)}"
+        )
+
+
+@router.get(
+    "/template/examples",
+    summary="Get template examples and documentation",
+    tags=["templates"]
+)
+async def get_template_examples():
+    """Get template examples and documentation for different use cases."""
+    examples = {
+        "basic_user_template": {
+            "description": "Simple user profile template",
+            "template": {
+                "name": "{{name}}",
+                "email": "{{email}}",
+                "phone": "{{phone}}",
+                "age": "{{random_int:min=18,max=80}}"
+            },
+            "count": 10
+        },
+        "ecommerce_template": {
+            "description": "E-commerce product and user data",
+            "template": {
+                "user": {
+                    "profile": {
+                        "name": "{{name}}",
+                        "email": "{{email}}",
+                        "join_date": "{{date_between:start_date=-2y,end_date=today}}"
+                    },
+                    "address": {
+                        "street": "{{street_address}}",
+                        "city": "{{city}}",
+                        "state": "{{state}}",
+                        "zip": "{{zipcode}}"
+                    }
+                },
+                "orders": {
+                    "order_id": "{{uuid4}}",
+                    "products": "{{[catch_phrase]:count=3}}",
+                    "total": "{{pydecimal:left_digits=3,right_digits=2}}",
+                    "order_date": "{{date_between:start_date=-6m,end_date=today}}"
+                }
+            },
+            "count": 50
+        },
+        "array_template": {
+            "description": "Template with array generation",
+            "template": {
+                "company": "{{company}}",
+                "employees": "{{[name]:count=5}}",
+                "departments": "{{[word]:count=3}}",
+                "locations": "{{[city]:count=2}}"
+            },
+            "count": 20
+        },
+        "localized_template": {
+            "description": "Multi-locale template example",
+            "template": {
+                "name": "{{name}}",
+                "address": "{{address}}",
+                "phone": "{{phone}}",
+                "company": "{{company}}"
+            },
+            "count": 10,
+            "locale": "fr_FR"
+        }
+    }
+    
+    syntax_help = {
+        "placeholder_formats": {
+            "simple": "{{generator}} - Basic placeholder",
+            "with_params": "{{generator:param=value,param2=value2}} - With parameters",
+            "arrays": "{{[generator]:count=5}} - Generate arrays",
+            "nested": "{{user.name}} - Nested object reference"
+        },
+        "common_generators": [
+            "name", "first_name", "last_name", "email", "phone", "address",
+            "city", "state", "country", "company", "job", "date", "time",
+            "url", "text", "paragraph", "word", "uuid4", "random_int"
+        ],
+        "parameter_examples": {
+            "random_int": "min=1,max=100",
+            "date_between": "start_date=-1y,end_date=today",
+            "pydecimal": "left_digits=3,right_digits=2",
+            "text": "max_nb_chars=200"
+        }
+    }
+    
+    return {
+        "examples": examples,
+        "syntax_help": syntax_help,
+        "documentation": "See TUTORIAL.md for comprehensive template documentation"
+    }

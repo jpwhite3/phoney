@@ -1,6 +1,6 @@
 from inspect import isfunction, getmodule
 from types import ModuleType
-from typing import Any, Dict, List, Set, Type, cast
+from typing import Any, Dict, List, Set, Type, cast, Optional
 
 from faker import Faker
 from faker.providers import BaseProvider
@@ -118,3 +118,118 @@ def get_provider_metadata() -> Dict[str, Dict[str, Any]]:
             continue
             
     return metadata
+
+
+def find_generator(fake_instance: Faker, requested_generator: str) -> Optional[str]:
+    """Smart generator finder that maps common requests to actual Faker methods.
+    
+    This function helps beginners by accepting intuitive names and mapping them
+    to the actual Faker generator methods.
+    """
+    from typing import Optional
+    
+    # Direct match - if the generator exists as-is, use it
+    if hasattr(fake_instance, requested_generator):
+        return requested_generator
+    
+    # Common mappings for beginner-friendly names
+    generator_mappings = {
+        # Person-related
+        "name": "name",
+        "first_name": "first_name", 
+        "last_name": "last_name",
+        "full_name": "name",
+        "person": "name",
+        "username": "user_name",
+        "user": "user_name",
+        
+        # Contact info
+        "email": "email",
+        "mail": "email",
+        "phone": "phone_number",
+        "telephone": "phone_number",
+        "mobile": "phone_number",
+        
+        # Address
+        "address": "address",
+        "street": "street_address",
+        "city": "city",
+        "state": "state",
+        "country": "country",
+        "zip": "zipcode",
+        "postal": "postcode",
+        "zipcode": "zipcode",
+        
+        # Internet
+        "url": "url",
+        "website": "url",
+        "domain": "domain_name",
+        "ip": "ipv4",
+        "ipv4": "ipv4",
+        "ipv6": "ipv6",
+        
+        # Text
+        "text": "text",
+        "paragraph": "paragraph",
+        "sentence": "sentence",
+        "word": "word",
+        "words": "words",
+        
+        # Date/Time
+        "date": "date",
+        "time": "time",
+        "datetime": "date_time",
+        "timestamp": "unix_time",
+        
+        # Numbers
+        "number": "random_int",
+        "integer": "random_int",
+        "float": "pyfloat",
+        "decimal": "pydecimal",
+        
+        # Company/Job
+        "company": "company",
+        "job": "job",
+        "profession": "job",
+        
+        # Colors
+        "color": "color_name",
+        "hex_color": "hex_color",
+        
+        # UUID
+        "uuid": "uuid4",
+        "guid": "uuid4",
+        
+        # Boolean
+        "boolean": "pybool",
+        "bool": "pybool",
+    }
+    
+    # Check if we have a mapping for the requested generator
+    mapped_generator = generator_mappings.get(requested_generator.lower())
+    if mapped_generator and hasattr(fake_instance, mapped_generator):
+        return mapped_generator
+    
+    # Fuzzy matching - look for partial matches in available methods
+    available_methods = []
+    for attr in dir(fake_instance):
+        if not attr.startswith('_'):
+            try:
+                attr_obj = getattr(fake_instance, attr)
+                if callable(attr_obj):
+                    available_methods.append(attr)
+            except (AttributeError, TypeError):
+                # Skip attributes that can't be accessed or are deprecated
+                continue
+    
+    # Try exact substring match first
+    for method in available_methods:
+        if requested_generator.lower() in method.lower():
+            return method
+    
+    # Try reverse substring match
+    for method in available_methods:
+        if method.lower() in requested_generator.lower():
+            return method
+    
+    return None
