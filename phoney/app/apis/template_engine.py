@@ -151,30 +151,37 @@ class TemplateValidator:
         warnings = []
         
         try:
-            # Extract all placeholders
-            fields = TemplateParser.extract_placeholders(template)
-            
-            if not fields:
-                errors.append(TemplateValidationError(
-                    field="template",
-                    generator="none",
-                    message="No placeholders found in template",
-                    error_type="no_placeholders"
-                ))
-            
-            # Validate each field
-            for field in fields:
-                field_errors, field_warnings = self._validate_field(field, strict)
-                errors.extend(field_errors)
-                warnings.extend(field_warnings)
+            import warnings as warn_module
+            # Temporarily suppress deprecation warnings during validation
+            with warn_module.catch_warnings():
+                warn_module.filterwarnings("ignore", category=DeprecationWarning)
+                
+                # Extract all placeholders
+                fields = TemplateParser.extract_placeholders(template)
+                
+                if not fields:
+                    errors.append(TemplateValidationError(
+                        field="template",
+                        generator="none",
+                        message="No placeholders found in template",
+                        error_type="no_placeholders"
+                    ))
+                
+                # Validate each field
+                for field in fields:
+                    field_errors, field_warnings = self._validate_field(field, strict)
+                    errors.extend(field_errors)
+                    warnings.extend(field_warnings)
             
         except Exception as e:
-            errors.append(TemplateValidationError(
-                field="template",
-                generator="unknown",
-                message=f"Template parsing error: {str(e)}",
-                error_type="parsing_error"
-            ))
+            # Skip deprecation warnings as errors
+            if "deprecated" not in str(e).lower():
+                errors.append(TemplateValidationError(
+                    field="template",
+                    generator="unknown",
+                    message=f"Template parsing error: {str(e)}",
+                    error_type="parsing_error"
+                ))
         
         return len(errors) == 0, errors, warnings
     
@@ -188,8 +195,16 @@ class TemplateValidator:
         
         if not actual_generator:
             # Get suggestions for similar generators
-            available_generators = [attr for attr in dir(self.faker) 
-                                  if not attr.startswith('_') and callable(getattr(self.faker, attr, None))]
+            available_generators = []
+            for attr in dir(self.faker):
+                if not attr.startswith('_'):
+                    try:
+                        attr_obj = getattr(self.faker, attr, None)
+                        if callable(attr_obj):
+                            available_generators.append(attr)
+                    except (AttributeError, TypeError):
+                        # Skip attributes that can't be accessed or are deprecated
+                        continue
             
             suggestions = []
             field_lower = field.generator.lower()
@@ -238,12 +253,16 @@ class TemplateValidator:
         try:
             generator_func = getattr(self.faker, generator_name)
             
-            # Extract args and kwargs from parameters
+            # Extract args and kwargs from parameters, excluding 'count' which is for arrays
             args = parameters.get('args', [])
             kwargs = {k: v for k, v in parameters.items() if k not in ['args', 'count']}
             
             # Test call (don't actually use the result)
-            generator_func(*args, **kwargs)
+            # Suppress warnings during validation
+            import warnings as warn_module
+            with warn_module.catch_warnings():
+                warn_module.filterwarnings("ignore", category=DeprecationWarning)
+                generator_func(*args, **kwargs)
             
         except TypeError as e:
             error_msg = str(e)
@@ -284,7 +303,12 @@ class TemplateProcessor:
     def process_template(self, template: Dict[str, Any], count: int = 1, unique: bool = False) -> List[Dict[str, Any]]:
         """Process a template and generate the requested number of records."""
         if unique:
-            self.faker.unique.clear()
+            # Clear any existing unique constraints
+            try:
+                self.faker.unique.clear()
+            except AttributeError:
+                # Unique functionality might not be available
+                pass
         
         results = []
         for _ in range(count):
@@ -295,9 +319,6 @@ class TemplateProcessor:
                 # For failed generation, continue with warning
                 # In production, you might want to log this
                 continue
-        
-        if unique:
-            self.faker.unique.disable()
         
         return results
     

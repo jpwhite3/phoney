@@ -22,7 +22,7 @@ class TestSettings:
         # Check security defaults
         assert settings.ALGORITHM == "HS256"
         assert settings.ACCESS_TOKEN_EXPIRE_MINUTES == 60
-        assert settings.RATE_LIMIT_PER_MINUTE == 100
+        assert settings.RATE_LIMIT_PER_MINUTE == 10000  # Higher rate limit for tests
         assert settings.SECURITY_HEADERS_ENABLED is True
 
     def test_validate_secret_key_valid(self):

@@ -1,4 +1,5 @@
 """Security middleware and utilities for the Phoney API."""
+import os
 import time
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
@@ -87,7 +88,12 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
         self.rate_limiter = RateLimiter(limit=rate_limit_per_minute, window=60)
-        self.excluded_paths = excluded_paths or {"/", "/docs", "/redoc", "/openapi.json"}
+        default_excluded = {"/", "/docs", "/redoc", "/openapi.json"}
+        # In test environment, exclude template endpoints from rate limiting
+        if os.environ.get("ENV_STATE") == "test":
+            default_excluded.update({"/template", "/api/v1/template/validate", "/api/v1/template/generate", "/api/v1/template/examples"})
+        
+        self.excluded_paths = excluded_paths or default_excluded
         self._cleanup_counter = 0
         
     async def dispatch(

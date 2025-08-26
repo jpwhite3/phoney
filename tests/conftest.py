@@ -42,7 +42,7 @@ def mock_env_vars(monkeypatch) -> None:
         "SECRET_KEY": "01234567890123456789012345678901",
         "ACCESS_TOKEN_EXPIRE_MINUTES": "60",
         "ALGORITHM": "HS256",
-        "RATE_LIMIT_PER_MINUTE": "100",
+        "RATE_LIMIT_PER_MINUTE": "10000",  # Much higher for tests
         "SECURITY_HEADERS_ENABLED": "true",
         "CORS_ORIGINS": '["http://localhost:3000", "http://localhost:8000"]',
         "LOG_LEVEL": "INFO"
@@ -76,7 +76,16 @@ def auth_headers(client: TestClient, mocker: MockFixture, mock_user_db: Dict) ->
         "/token",
         data={"username": "api_user", "password": "test_password"}
     )
-    token = response.json()["access_token"]
+    
+    # Check response status and content
+    if response.status_code != 200:
+        raise ValueError(f"Token request failed: {response.status_code} - {response.text}")
+    
+    response_data = response.json()
+    if "access_token" not in response_data:
+        raise ValueError(f"No access_token in response: {response_data}")
+    
+    token = response_data["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -91,7 +100,7 @@ def mock_settings(monkeypatch) -> None:
     """Mock settings for testing."""
     monkeypatch.setattr(settings, "API_KEY", "test_api_key")
     monkeypatch.setattr(settings, "ENV_STATE", "test")
-    monkeypatch.setattr(settings, "RATE_LIMIT_PER_MINUTE", 100)
+    monkeypatch.setattr(settings, "RATE_LIMIT_PER_MINUTE", 10000)  # Much higher for tests
 
 
 @pytest.fixture

@@ -681,10 +681,10 @@ class TestTemplateIntegration:
         
         # 3. Generate data with advanced features
         advanced_request = {
-            **ecommerce_template,
+            "template": ecommerce_template["template"],
+            "count": 10,
             "format": "json",
-            "unique": True,
-            "count": 10
+            "unique": True
         }
         generate_response = client.post(
             "/api/v1/template/generate",
