@@ -9,36 +9,37 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """Application settings using Pydantic v2 syntax."""
+
     # Environment configuration
     ENV_STATE: Literal["dev", "test", "prod"] = "dev"
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    
+
     # API credentials
     API_USERNAME: str = "default_user"  # Default for testing
     API_PASSWORD_HASH: str = "$2b$12$tufn64/0gSIHZMPLEHASH"  # Default for testing
     API_KEY: str | None = None  # Optional API key for authentication
-    
+
     # Security
     SECRET_KEY: str = "01234567890123456789012345678901"  # Default for testing
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days by default
     ALGORITHM: str = "HS256"
-    
+
     # Rate limiting
     RATE_LIMIT_PER_MINUTE: int = 60  # Default: 60 requests per minute
-    RATE_LIMIT_BURST: int = 10       # Allow bursts of 10 requests
-    
+    RATE_LIMIT_BURST: int = 10  # Allow bursts of 10 requests
+
     # Security headers
     SECURITY_HEADERS_ENABLED: bool = True
-    
+
     # CORS settings
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8000"]
     CORS_HEADERS: list[str] = ["*"]
     CORS_METHODS: list[str] = ["*"]
-    
+
     # Logging
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
-    
+
     # Set different env file prefixes based on environment
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
@@ -46,7 +47,7 @@ class Settings(BaseSettings):
         case_sensitive=True,
         extra="ignore",
     )
-    
+
     @field_validator("SECRET_KEY")
     @classmethod
     def validate_secret_key(cls, v: str) -> str:
@@ -54,7 +55,7 @@ class Settings(BaseSettings):
         if not v or len(v) < 32:
             raise ValueError("SECRET_KEY must be set and at least 32 characters long")
         return v
-    
+
     @field_validator("CORS_ORIGINS")
     @classmethod
     def validate_cors_origins(cls, v: list[str], info) -> list[str]:
@@ -68,19 +69,19 @@ class Settings(BaseSettings):
                 "Specify exact origins instead."
             )
         return v
-    
+
     # Support for deserializing JSON strings from environment variables
     @field_validator("CORS_ORIGINS", "CORS_HEADERS", "CORS_METHODS", mode="before")
     @classmethod
     def parse_json_string(cls, v: Any) -> Any:
         """Parse JSON string values from environment variables."""
-        if isinstance(v, str) and v.startswith('['):
+        if isinstance(v, str) and v.startswith("["):
             try:
                 return json.loads(v)
             except json.JSONDecodeError:
                 pass
         return v
-        
+
     # Fix case sensitivity for LOG_LEVEL
     @field_validator("LOG_LEVEL", mode="before")
     @classmethod
@@ -95,12 +96,21 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get cached settings instance with environment-specific configuration."""
     # Check if we're in a test environment
-    if os.environ.get("TESTING", "").lower() == "true" or os.environ.get("ENV_STATE", "").lower() == "test":
+    if (
+        os.environ.get("TESTING", "").lower() == "true"
+        or os.environ.get("ENV_STATE", "").lower() == "test"
+    ):
         # Use test-specific settings
-        env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "tests", ".env.test")
+        env_file = os.path.join(
+            os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            ),
+            "tests",
+            ".env.test",
+        )
         if os.path.exists(env_file):
             return Settings(_env_file=env_file)
-    
+
     # Regular settings
     return Settings()
 

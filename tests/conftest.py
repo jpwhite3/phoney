@@ -27,7 +27,7 @@ def client() -> Generator[TestClient, None, None]:
 @pytest.fixture(autouse=True)
 def mock_env_vars(monkeypatch) -> None:
     """Mock environment variables for testing.
-    
+
     This fixture runs automatically for all tests.
     """
     env_vars = {
@@ -42,9 +42,9 @@ def mock_env_vars(monkeypatch) -> None:
         "RATE_LIMIT_PER_MINUTE": "10000",  # Much higher for tests
         "SECURITY_HEADERS_ENABLED": "true",
         "CORS_ORIGINS": '["http://localhost:3000", "http://localhost:8000"]',
-        "LOG_LEVEL": "INFO"
+        "LOG_LEVEL": "INFO",
     }
-    
+
     for key, value in env_vars.items():
         monkeypatch.setenv(key, value)
 
@@ -58,30 +58,37 @@ def mock_user_db() -> dict[str, dict[str, Any]]:
         "api_user": {
             "username": "api_user",
             "hashed_password": password_hash,
-            "disabled": False
+            "disabled": False,
         }
     }
 
 
 @pytest.fixture
-def auth_headers(client: TestClient, mocker: MockFixture, mock_user_db: dict) -> dict[str, str]:
+def auth_headers(
+    client: TestClient, mocker: MockFixture, mock_user_db: dict
+) -> dict[str, str]:
     """Get authentication headers for testing protected routes."""
     mocker.patch.object(auth, "users_db", mock_user_db)
-    mocker.patch.object(auth, "authenticate_user", return_value=auth.UserInDB(**mock_user_db["api_user"]))
-    
-    response = client.post(
-        "/token",
-        data={"username": "api_user", "password": "test_password"}
+    mocker.patch.object(
+        auth,
+        "authenticate_user",
+        return_value=auth.UserInDB(**mock_user_db["api_user"]),
     )
-    
+
+    response = client.post(
+        "/token", data={"username": "api_user", "password": "test_password"}
+    )
+
     # Check response status and content
     if response.status_code != 200:
-        raise ValueError(f"Token request failed: {response.status_code} - {response.text}")
-    
+        raise ValueError(
+            f"Token request failed: {response.status_code} - {response.text}"
+        )
+
     response_data = response.json()
     if "access_token" not in response_data:
         raise ValueError(f"No access_token in response: {response_data}")
-    
+
     token = response_data["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
@@ -97,7 +104,9 @@ def mock_settings(monkeypatch) -> None:
     """Mock settings for testing."""
     monkeypatch.setattr(settings, "API_KEY", "test_api_key")
     monkeypatch.setattr(settings, "ENV_STATE", "test")
-    monkeypatch.setattr(settings, "RATE_LIMIT_PER_MINUTE", 10000)  # Much higher for tests
+    monkeypatch.setattr(
+        settings, "RATE_LIMIT_PER_MINUTE", 10000
+    )  # Much higher for tests
 
 
 @pytest.fixture
