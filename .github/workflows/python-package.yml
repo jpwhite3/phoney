@@ -110,14 +110,16 @@ jobs:
       
       - name: Run pytest with coverage
         run: |
-          poetry run pytest --cov=phoney --cov-report=xml --cov-report=term --cov-fail-under=75
+          poetry run pytest --cov=phoney --cov-report=xml --cov-report=html --cov-report=term --cov-fail-under=75
       
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+      - name: Upload coverage reports as artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
-          verbose: true
+          name: coverage-report-python-${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            htmlcov/
 
   coverage-report:
     name: Verify Total Coverage
@@ -154,12 +156,15 @@ jobs:
       
       - name: Run pytest with coverage threshold
         run: |
-          poetry run pytest --cov=phoney --cov-report=xml --cov-report=term --cov-fail-under=75
+          poetry run pytest --cov=phoney --cov-report=xml --cov-report=html --cov-report=term --cov-fail-under=75
           echo "::notice::Current test coverage meets minimum requirement of 75%"
           poetry run coverage report --fail-under=90 || echo "::warning::Test coverage is below target of 90%"
       
-      - name: Upload coverage report artifact
+      - name: Upload comprehensive coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: coverage.xml
+          name: coverage-report-comprehensive
+          path: |
+            coverage.xml
+            htmlcov/
+            .coverage

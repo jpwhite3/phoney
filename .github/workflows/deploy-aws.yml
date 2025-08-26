@@ -84,21 +84,16 @@ jobs:
             --junit-xml=test-results.xml \
             -v
 
-      - name: Upload test results
+      - name: Upload test results and coverage
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results
+          name: test-results-and-coverage
           path: |
             test-results.xml
             htmlcov/
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        if: github.event_name != 'pull_request'
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
+            coverage.xml
+            .coverage
 
   # Job 2: Determine deployment stage
   determine-stage:
