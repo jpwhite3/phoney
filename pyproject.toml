@@ -55,7 +55,8 @@ ignore = [
     "S112",  # try-except-continue/pass (acceptable for iterative operations)
     "C901",  # Function is too complex (acceptable for some business logic functions)
     "S104",  # Possible binding to all interfaces (acceptable for development configs)
-    "B008"   # Do not perform function call in defaults (acceptable for FastAPI dependency injection)
+    "B008",  # Do not perform function call in defaults (acceptable for FastAPI dependency injection)
+    "UP017"  # Use datetime.UTC alias (conflicts with Python 3.10 compatibility)
 ]
 
 [tool.ruff.per-file-ignores]
