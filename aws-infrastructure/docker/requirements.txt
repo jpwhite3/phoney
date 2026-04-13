@@ -7,7 +7,7 @@ pydantic-settings==2.2.1
 mangum==0.17.0
 
 # Authentication
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.4.0
 passlib[bcrypt]==1.7.4
 
 # Fake data generation
